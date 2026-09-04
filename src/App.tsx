@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
-import { AuthProvider, useAuth } from "./auth";
+import { AuthProvider, limiteSessao, registrarSeguranca, useAuth } from "./auth";
 import type { Usuario } from "./auth";
 import { StoreProvider, useStore } from "./store";
 import { diasDesde, prazoDe } from "./types";
@@ -17,14 +16,16 @@ import Gdpr from "./components/Gdpr";
 import Iso from "./components/Iso";
 import Security from "./components/Security";
 import Reports from "./components/Reports";
+import AdminPanel from "./components/AdminPanel";
+import { UpgradeProvider, useUpgrade } from "./components/UpgradeModal";
 
 export type Page =
   | "dashboard" | "assistente"
   | "lgpd-registro" | "lgpd-risco" | "lgpd-titulares" | "lgpd-bases"
   | "gdpr-ropa" | "gdpr-bases" | "gdpr-dpia"
-  | "iso" | "relatorios" | "seguranca";
+  | "iso" | "relatorios" | "seguranca" | "admin";
 
-const NAV: { secao: string; itens: { id: Page; label: string; icone: string; badge?: "ia" | "abertas" }[] }[] = [
+const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; icone: string; badge?: "ia" | "abertas" }[] }[] = [
   {
     secao: "Operação",
     itens: [
@@ -60,6 +61,11 @@ const NAV: { secao: string; itens: { id: Page; label: string; icone: string; bad
       { id: "seguranca", label: "Segurança", icone: "shield" },
     ],
   },
+  {
+    secao: "Administração",
+    admin: true,
+    itens: [{ id: "admin", label: "Painel admin", icone: "lock" }],
+  },
 ];
 
 const TITULOS: Record<Page, string> = {
@@ -75,6 +81,7 @@ const TITULOS: Record<Page, string> = {
   iso: "Programas ISO",
   relatorios: "Relatórios",
   seguranca: "Central de segurança",
+  admin: "Painel administrativo",
 };
 
 function Splash() {
@@ -94,6 +101,7 @@ function Splash() {
 function Shell() {
   const { usuario, sair } = useAuth();
   const { score, solicitacoes, registrar } = useStore();
+  const { abrir: abrirUpgrade } = useUpgrade();
   const [pagina, setPagina] = useState<Page>("dashboard");
   const [menuAberto, setMenuAberto] = useState(false);
   const [contaAberta, setContaAberta] = useState(false);
@@ -111,9 +119,41 @@ function Shell() {
     if (!usuario && prev) registrar("auth", `Logout: ${prev.email}`);
   }, [usuario, registrar]);
 
+  /* expiração de sessão por inatividade */
+  useEffect(() => {
+    if (!usuario) return;
+    const KEY = "radargrc:act";
+    const limite = limiteSessao(usuario.papel);
+    let last = Date.now();
+    sessionStorage.setItem(KEY, String(last));
+    const tocar = () => {
+      const n = Date.now();
+      if (n - last > 15_000) {
+        last = n;
+        sessionStorage.setItem(KEY, String(n));
+      }
+    };
+    window.addEventListener("pointerdown", tocar);
+    window.addEventListener("keydown", tocar);
+    const iv = setInterval(() => {
+      const act = Number(sessionStorage.getItem(KEY) || Date.now());
+      if (Date.now() - act > limite) {
+        registrarSeguranca("sessao_expirada", usuario.email, `Sessão encerrada após ${Math.round(limite / 60000)} min de inatividade.`);
+        sessionStorage.setItem("radargrc:expired", "1");
+        sair();
+      }
+    }, 20_000);
+    return () => {
+      clearInterval(iv);
+      window.removeEventListener("pointerdown", tocar);
+      window.removeEventListener("keydown", tocar);
+    };
+  }, [usuario, sair]);
+
   const abertas = solicitacoes.filter((s) => s.status !== "concluida");
   const urgentes = abertas.filter((s) => prazoDe(s) - diasDesde(s.data) <= 5);
   const irPara = (p: Page) => { setPagina(p); setMenuAberto(false); };
+  const ehAdmin = usuario?.papel === "admin";
 
   const buscar = () => {
     setBuscaAtividades(buscaTopo);
@@ -125,11 +165,19 @@ function Shell() {
   const corScore = score >= 80 ? "text-moss" : score >= 60 ? "text-amber" : "text-rust";
   const iniciais = (usuario?.nome ?? "?").split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 
+  const planoBadge = ehAdmin
+    ? { txt: "ADMIN", cls: "bg-pine text-lime border-pine-line" }
+    : usuario?.plano === "pro"
+      ? usuario?.trialAte
+        ? { txt: "TRIAL", cls: "bg-[#1f4e8f] text-cream border-[#1f4e8f]" }
+        : { txt: "PRO", cls: "bg-moss text-cream border-moss" }
+      : { txt: "DEMO", cls: "bg-amber-soft text-ink border-amber/60" };
+
   const NavList = () => (
     <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
-      {NAV.map((sec) => (
+      {NAV.filter((s) => !s.admin || ehAdmin).map((sec) => (
         <div key={sec.secao}>
-          <p className="px-2.5 pt-4 pb-1.5 text-[9.5px] font-bold tracking-[0.2em] text-cream/35 uppercase">{sec.secao}</p>
+          <p className={`px-2.5 pt-4 pb-1.5 text-[9.5px] font-bold tracking-[0.2em] uppercase ${sec.admin ? "text-lime/60" : "text-cream/35"}`}>{sec.secao}</p>
           <div className="space-y-0.5">
             {sec.itens.map((n) => (
               <button
@@ -164,6 +212,15 @@ function Shell() {
         </span>
       </button>
       <NavList />
+      {usuario?.plano === "demo" && usuario.papel !== "admin" && (
+        <div className="mx-3 mb-4 rounded-lg border border-lime/30 bg-pine-deep/80 p-3.5">
+          <p className="text-[9.5px] font-extrabold tracking-[0.16em] text-lime uppercase">Plano Demo</p>
+          <p className="mt-1 text-[11px] leading-snug text-cream/60">5 atividades LGPD · 3 ROPA · 2 frameworks ISO</p>
+          <button onClick={abrirUpgrade} className="mt-2.5 w-full rounded-md bg-lime px-3 py-1.5 text-[11.5px] font-extrabold text-pine transition hover:bg-lime-soft active:scale-[0.98]">
+            Liberar tudo — Trial Pro
+          </button>
+        </div>
+      )}
     </>
   );
 
@@ -207,6 +264,12 @@ function Shell() {
               />
             </div>
 
+            {/* badge do plano */}
+            <button onClick={abrirUpgrade} className={`hidden items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10.5px] font-extrabold tracking-[0.12em] transition hover:opacity-85 sm:inline-flex ${planoBadge.cls}`} title="Ver planos e fazer upgrade">
+              <Ic name={ehAdmin ? "shield" : "spark"} size={11} sw={2.4} />
+              {planoBadge.txt}
+            </button>
+
             <button onClick={() => irPara("lgpd-titulares")} className="relative rounded-md border border-sand bg-cream p-2 text-ink-soft transition hover:border-moss hover:text-moss" aria-label="Solicitações pendentes" title={`${abertas.length} solicitação(ões) em aberto`}>
               <Ic name="bell" size={16} />
               {abertas.length > 0 && (
@@ -214,7 +277,7 @@ function Shell() {
               )}
             </button>
 
-            <button onClick={() => irPara("dashboard")} className={`hidden items-center gap-2 rounded-md border border-sand bg-cream px-3 py-1.5 transition hover:border-moss sm:flex ${corScore}`} title="Índice de maturidade LGPD">
+            <button onClick={() => irPara("dashboard")} className={`hidden items-center gap-2 rounded-md border border-sand bg-cream px-3 py-1.5 transition hover:border-moss md:flex ${corScore}`} title="Índice de maturidade LGPD">
               <span className="relative block size-5">
                 <svg viewBox="0 0 20 20" className="size-5 -rotate-90">
                   <circle cx="10" cy="10" r="8" fill="none" stroke="rgba(24,38,32,0.12)" strokeWidth="2.5" />
@@ -240,17 +303,26 @@ function Shell() {
               {menuUser && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setMenuUser(false)} />
-                  <div className="anim-pop absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-lg border border-sand bg-cream shadow-[0_18px_40px_-16px_rgba(12,31,24,0.4)]">
+                  <div className="anim-pop absolute right-0 z-50 mt-2 w-60 overflow-hidden rounded-lg border border-sand bg-cream shadow-[0_18px_40px_-16px_rgba(12,31,24,0.4)]">
                     <div className="border-b border-sand bg-paper px-3.5 py-3">
                       <p className="truncate text-[12.5px] font-bold text-ink">{usuario?.nome}</p>
                       <p className="truncate text-[11px] text-ink-faint">{usuario?.email}</p>
+                      <div className="mt-2 flex items-center gap-1.5">
+                        <span className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold tracking-wide uppercase ${planoBadge.cls}`}>{planoBadge.txt}</span>
+                        <span className="text-[10px] text-ink-faint">{usuario?.cargo}</span>
+                      </div>
                     </div>
                     <button onClick={() => { setContaAberta(true); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold text-ink-soft transition hover:bg-paper hover:text-ink">
                       <Ic name="user" size={15} /> Minha conta
                     </button>
-                    <button onClick={() => { irPara("seguranca"); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold text-ink-soft transition hover:bg-paper hover:text-ink">
-                      <Ic name="shield" size={15} /> Central de segurança
+                    <button onClick={() => { abrirUpgrade(); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold text-ink-soft transition hover:bg-paper hover:text-ink">
+                      <Ic name="spark" size={15} /> Planos e upgrade
                     </button>
+                    {ehAdmin && (
+                      <button onClick={() => { irPara("admin"); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold text-ink-soft transition hover:bg-paper hover:text-ink">
+                        <Ic name="lock" size={15} /> Painel administrativo
+                      </button>
+                    )}
                     <button
                       onClick={() => { registrar("auth", `Logout solicitado: ${usuario?.email}`); sair(); }}
                       className="flex w-full items-center gap-2.5 border-t border-sand px-3.5 py-2.5 text-[12.5px] font-bold text-rust transition hover:bg-rust-soft/40"
@@ -278,6 +350,7 @@ function Shell() {
             {pagina === "iso" && <Iso />}
             {pagina === "relatorios" && <Reports />}
             {pagina === "seguranca" && <Security />}
+            {pagina === "admin" && ehAdmin && <AdminPanel />}
           </div>
         </main>
       </div>
@@ -297,12 +370,20 @@ export default function App() {
 }
 
 function Root() {
-  const { usuario, pronto } = useAuth();
+  const { usuario, pronto, sair } = useAuth();
+
+  /* conta bloqueada por administrador derruba a sessão ativa */
+  useEffect(() => {
+    if (usuario?.bloqueado) sair();
+  }, [usuario, sair]);
+
   if (!pronto) return <Splash />;
   if (!usuario) return <AuthScreen />;
   return (
-    <StoreProvider key={usuario.id} storageKey={`radargrc:data:${usuario.id}`}>
-      <Shell />
+    <StoreProvider key={usuario.id} storageKey={`radargrc:${usuario.id}`}>
+      <UpgradeProvider>
+        <Shell />
+      </UpgradeProvider>
     </StoreProvider>
   );
 }
