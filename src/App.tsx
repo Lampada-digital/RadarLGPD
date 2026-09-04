@@ -17,7 +17,6 @@ import Iso from "./components/Iso";
 import Security from "./components/Security";
 import Reports from "./components/Reports";
 import AdminPanel from "./components/AdminPanel";
-import { UpgradeProvider, useUpgrade } from "./components/UpgradeModal";
 
 export type Page =
   | "dashboard" | "assistente"
@@ -123,7 +122,6 @@ function Splash() {
 function Shell() {
   const { usuario, sair } = useAuth();
   const { score, solicitacoes, registrar } = useStore();
-  const { abrir: abrirUpgrade } = useUpgrade();
   const [pagina, setPagina] = useState<Page>("dashboard");
   const [menuAberto, setMenuAberto] = useState(false);
   const [contaAberta, setContaAberta] = useState(false);
@@ -187,13 +185,9 @@ function Shell() {
   const corScore = score >= 80 ? "text-moss" : score >= 60 ? "text-amber" : "text-rust";
   const iniciais = (usuario?.nome ?? "?").split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 
-  const planoBadge = ehAdmin
+  const papelBadge = ehAdmin
     ? { txt: "ADMIN", cls: "bg-pine text-lime border-pine-line" }
-    : usuario?.plano === "pro"
-      ? usuario?.trialAte
-        ? { txt: "TRIAL", cls: "bg-[#1f4e8f] text-cream border-[#1f4e8f]" }
-        : { txt: "PRO", cls: "bg-moss text-cream border-moss" }
-      : { txt: "DEMO", cls: "bg-amber-soft text-ink border-amber/60" };
+    : { txt: "OPERADOR", cls: "bg-paper-deep text-ink-soft border-sand" };
 
   const NavList = () => (
     <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
@@ -234,18 +228,18 @@ function Shell() {
         </span>
       </button>
       <NavList />
-      {usuario?.plano === "demo" && usuario.papel !== "admin" && (
+      {ehAdmin && (
         <div className="mx-3 mb-3 rounded-lg border border-lime/30 bg-pine-deep/80 p-3.5">
-          <p className="text-[9.5px] font-extrabold tracking-[0.16em] text-lime uppercase">Plano Demo</p>
-          <p className="mt-1 text-[11px] leading-snug text-cream/60">5 atividades LGPD · 3 ROPA · 2 frameworks ISO</p>
-          <button onClick={abrirUpgrade} className="mt-2.5 w-full rounded-md bg-lime px-3 py-1.5 text-[11.5px] font-extrabold text-pine transition hover:bg-lime-soft active:scale-[0.98]">
-            Liberar tudo — Trial Pro
+          <p className="text-[9.5px] font-extrabold tracking-[0.16em] text-lime uppercase">Sua organização</p>
+          <p className="mt-1 truncate text-[12px] font-bold text-cream">{usuario?.empresa || "—"}</p>
+          <button onClick={() => irPara("admin")} className="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-lime px-3 py-1.5 text-[11.5px] font-extrabold text-pine transition hover:bg-lime-soft active:scale-[0.98]">
+            <Ic name="user" size={12} sw={2.4} /> Gerenciar usuários
           </button>
         </div>
       )}
       <div className="mx-3 mb-4 flex items-center justify-between rounded-md border border-pine-line bg-pine-deep/60 px-3 py-2">
         <span className="flex items-center gap-1.5 text-[9px] font-extrabold tracking-[0.14em] text-lime/80 uppercase">
-          <span className="pulse-dot size-1.5 rounded-full bg-lime" /> v2.1 · online
+          <span className="pulse-dot size-1.5 rounded-full bg-lime" /> v2.2 · online
         </span>
         <span className="text-[9px] font-bold text-cream/35">11 frameworks · PDF</span>
       </div>
@@ -292,11 +286,11 @@ function Shell() {
               />
             </div>
 
-            {/* badge do plano */}
-            <button onClick={abrirUpgrade} className={`hidden items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10.5px] font-extrabold tracking-[0.12em] transition hover:opacity-85 sm:inline-flex ${planoBadge.cls}`} title="Ver planos e fazer upgrade">
-              <Ic name={ehAdmin ? "shield" : "spark"} size={11} sw={2.4} />
-              {planoBadge.txt}
-            </button>
+            {/* badge do papel */}
+            <span className={`hidden items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10.5px] font-extrabold tracking-[0.12em] sm:inline-flex ${papelBadge.cls}`} title={ehAdmin ? "Administrador da organização" : "Operador"}>
+              <Ic name={ehAdmin ? "shield" : "user"} size={11} sw={2.4} />
+              {papelBadge.txt}
+            </span>
 
             <button onClick={() => irPara("lgpd-titulares")} className="relative rounded-md border border-sand bg-cream p-2 text-ink-soft transition hover:border-moss hover:text-moss" aria-label="Solicitações pendentes" title={`${abertas.length} solicitação(ões) em aberto`}>
               <Ic name="bell" size={16} />
@@ -336,15 +330,12 @@ function Shell() {
                       <p className="truncate text-[12.5px] font-bold text-ink">{usuario?.nome}</p>
                       <p className="truncate text-[11px] text-ink-faint">{usuario?.email}</p>
                       <div className="mt-2 flex items-center gap-1.5">
-                        <span className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold tracking-wide uppercase ${planoBadge.cls}`}>{planoBadge.txt}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold tracking-wide uppercase ${papelBadge.cls}`}>{papelBadge.txt}</span>
                         <span className="text-[10px] text-ink-faint">{usuario?.cargo}</span>
                       </div>
                     </div>
                     <button onClick={() => { setContaAberta(true); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold text-ink-soft transition hover:bg-paper hover:text-ink">
                       <Ic name="user" size={15} /> Minha conta
-                    </button>
-                    <button onClick={() => { abrirUpgrade(); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold text-ink-soft transition hover:bg-paper hover:text-ink">
-                      <Ic name="spark" size={15} /> Planos e upgrade
                     </button>
                     {ehAdmin && (
                       <button onClick={() => { irPara("admin"); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold text-ink-soft transition hover:bg-paper hover:text-ink">
@@ -413,9 +404,7 @@ function Root() {
   if (!usuario) return <AuthScreen />;
   return (
     <StoreProvider key={usuario.id} storageKey={`radargrc:${usuario.id}`}>
-      <UpgradeProvider>
-        <Shell />
-      </UpgradeProvider>
+      <Shell />
     </StoreProvider>
   );
 }

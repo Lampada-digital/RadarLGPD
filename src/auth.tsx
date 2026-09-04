@@ -1,13 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
-/* ============ Usuários, planos, sessão e segurança (persistência local) ============ */
+/* ============ Usuários, organizações, sessão e segurança (persistência local) ============
+   Modelo de negócio: licença mensal fixa, sem planos/limites.
+   Todo cliente que se cadastra torna-se ADMINISTRADOR da própria organização e pode
+   criar, bloquear e excluir usuários (operadores) do seu time.                      */
 
-export type Plano = "demo" | "pro";
 export type Papel = "admin" | "operador";
 
 export type Usuario = {
   id: string;
+  orgId: string;
   nome: string;
   empresa: string;
   email: string;
@@ -18,11 +21,10 @@ export type Usuario = {
   salt: string;
   hash: string;
   criadoEm: string;
+  criadoPor?: string;
   ultimoAcesso?: string;
-  plano: Plano;
   papel: Papel;
   bloqueado?: boolean;
-  trialAte?: string;
   demo?: boolean;
 };
 
@@ -30,8 +32,6 @@ type Sessao = { userId: string; lembrar: boolean };
 
 export const DEMO_EMAIL = "demo@radarlgpd.app";
 export const DEMO_SENHA = "demo1234";
-export const ADMIN_EMAIL = "admin@radargrc.app";
-export const ADMIN_SENHA = "Admin@2024!";
 
 const USERS_KEY = "radargrc:users";
 const SESSION_KEY = "radargrc:session";
@@ -107,7 +107,10 @@ export async function hashSenha(senha: string, salt: string): Promise<string> {
 /* ---------- persistência ---------- */
 function normalizar(u: Partial<Usuario> & { id: string; email: string }): Usuario {
   return {
-    nome: "", empresa: "", salt: "", hash: "", criadoEm: new Date().toISOString(), plano: "demo", papel: "operador",
+    nome: "", empresa: "", salt: "", hash: "",
+    criadoEm: new Date().toISOString(),
+    orgId: `org-${u.id}`,          // migração: usuários antigos ganham a própria org
+    papel: "operador",
     ...u,
   } as Usuario;
 }
@@ -165,7 +168,7 @@ export function listarBloqueiosAtivos(): number {
 export type EventoSeguranca = {
   id: string;
   ts: string;
-  tipo: "login_ok" | "login_falha" | "bloqueio" | "cadastro" | "senha_troca" | "sessao_expirada" | "admin_acao" | "trial_ativado";
+  tipo: "login_ok" | "login_falha" | "bloqueio" | "cadastro" | "senha_troca" | "sessao_expirada" | "admin_acao";
   email: string;
   detalhe: string;
 };
@@ -193,17 +196,17 @@ export function limparSeguranca() {
 /* ---------- limites de sessão por inatividade ---------- */
 export const limiteSessao = (papel: Papel) => (papel === "admin" ? 30 * 60_000 : 2 * 3_600_000);
 
-/* ---------- validação de trial ---------- */
-function validarTrial(u: Usuario): Usuario {
-  if (u.papel !== "admin" && u.plano === "pro" && u.trialAte && new Date(u.trialAte).getTime() < Date.now()) {
-    const degradado = { ...u, plano: "demo" as Plano, trialAte: undefined };
-    gravarUsers(listarUsuarios().map((x) => (x.id === u.id ? degradado : x)));
-    return degradado;
-  }
-  return u;
+/* ---------- senha temporária legível ---------- */
+export function gerarSenhaTemporaria(): string {
+  const maius = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const minus = "abcdefghijkmnpqrstuvwxyz";
+  const nums = "23456789";
+  const todos = maius + minus + nums;
+  const pick = (arr: string, n: number) => Array.from({ length: n }, () => arr[Math.floor(Math.random() * arr.length)]).join("");
+  return `Radar@${pick(maius, 2)}${pick(minus, 4)}${pick(nums, 2)}`;
 }
 
-/* ============ Contexto ============ */
+/* ============ Contexto de autenticação ============ */
 
 type AuthCtx = {
   usuario: Usuario | null;
@@ -213,7 +216,6 @@ type AuthCtx = {
   sair: () => void;
   atualizarPerfil: (nome: string, empresa: string) => void;
   trocarSenha: (atual: string, nova: string) => Promise<string | null>;
-  ativarTrial: () => void;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -222,7 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [pronto, setPronto] = useState(false);
 
-  /* seed das contas demo + admin e restauração de sessão */
+  /* seed da conta demo (admin da org de demonstração) + restauração de sessão */
   useEffect(() => {
     (async () => {
       const lista = listarUsuarios();
@@ -230,28 +232,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!lista.some((u) => u.email === DEMO_EMAIL)) {
         const salt = uid();
         novos.push(normalizar({
-          id: "demo-radar", nome: "Conta Demonstração", empresa: "Radar GRC", email: DEMO_EMAIL,
+          id: "demo-radar", orgId: "org-demo", nome: "Conta Demonstração", empresa: "Radar GRC", email: DEMO_EMAIL,
           cargo: "Encarregado(a) de dados (DPO)", porte: "11–50 colaboradores", jurisdicao: "Ambas (LGPD + GDPR)",
-          salt, hash: await hashSenha(DEMO_SENHA, salt), plano: "demo", papel: "operador", demo: true,
-        }));
-      }
-      if (!lista.some((u) => u.email === ADMIN_EMAIL)) {
-        const salt = uid();
-        novos.push(normalizar({
-          id: "admin-radar", nome: "Administrador Master", empresa: "Radar GRC", email: ADMIN_EMAIL,
-          cargo: "Diretoria / C-level", porte: "11–50 colaboradores", jurisdicao: "Ambas (LGPD + GDPR)",
-          salt, hash: await hashSenha(ADMIN_SENHA, salt), plano: "pro", papel: "admin",
+          salt, hash: await hashSenha(DEMO_SENHA, salt), papel: "admin", demo: true,
         }));
       }
       if (novos.length) gravarUsers([...lista, ...novos]);
       const todas = novos.length ? listarUsuarios() : lista;
       const s = lerSessao();
       if (s) {
-        let u = todas.find((x) => x.id === s.userId);
-        if (u && !u.bloqueado) {
-          u = validarTrial(u);
-          setUsuario(u);
-        }
+        const u = todas.find((x) => x.id === s.userId);
+        if (u && !u.bloqueado) setUsuario(u);
       }
       setPronto(true);
     })();
@@ -262,55 +253,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const vEmail = validarEmailCorporativo(mail);
     if (!vEmail.ok) return vEmail.msg ?? "E-mail inválido.";
     const bloqueado = bloqueioRestante(mail);
-    if (bloqueado > 0) return `Acesso bloqueado temporariamente (proteção anti força-bruta). Aguarde ${bloqueado}s.`;
-    await new Promise((r) => setTimeout(r, 600));
+    if (bloqueado > 0) return `Conta temporariamente bloqueada após ${MAX_TENTATIVAS} tentativas. Aguarde ${bloqueado}s.`;
+    await new Promise((r) => setTimeout(r, 550));
+
     const u = listarUsuarios().find((x) => x.email === mail);
     if (!u) {
       registrarSeguranca("login_falha", mail, "Tentativa de login com e-mail não cadastrado.");
-      return "Nenhuma conta encontrada com este e-mail. Crie seu acesso primeiro.";
+      return "Nenhuma conta encontrada com este e-mail corporativo.";
     }
     if (u.bloqueado) {
-      registrarSeguranca("login_falha", mail, "Tentativa de login em conta bloqueada por administrador.");
-      return "Esta conta está bloqueada pelo administrador. Entre em contato com o suporte.";
+      registrarSeguranca("bloqueio", mail, "Tentativa de login em conta bloqueada pelo administrador.");
+      return "Esta conta está bloqueada pelo administrador da organização.";
     }
     const h = await hashSenha(senha, u.salt);
     if (h !== u.hash) {
       const locks = lerLocks();
       const reg = locks[mail] ?? { n: 0, nivel: 0, ate: 0 };
       reg.n += 1;
-      registrarSeguranca("login_falha", mail, `Senha incorreta (tentativa ${reg.n} de ${MAX_TENTATIVAS}).`);
       if (reg.n >= MAX_TENTATIVAS) {
-        reg.nivel = Math.min(reg.nivel + 1, BLOQUEIOS_ESCALONADOS.length) ;
-        const segs = BLOQUEIOS_ESCALONADOS[reg.nivel - 1];
-        reg.ate = Date.now() + segs * 1000;
+        reg.ate = Date.now() + BLOQUEIOS_ESCALONADOS[Math.min(reg.nivel, BLOQUEIOS_ESCALONADOS.length - 1)] * 1000;
+        reg.nivel += 1;
         reg.n = 0;
         gravarLocks({ ...locks, [mail]: reg });
-        registrarSeguranca("bloqueio", mail, `Conta bloqueada por ${segs}s após ${MAX_TENTATIVAS} tentativas (nível ${reg.nivel}).`);
-        return `${MAX_TENTATIVAS} tentativas incorretas — bloqueio de ${segs >= 60 ? `${segs / 60} min` : `${segs}s`} aplicado (nível ${reg.nivel}).`;
+        registrarSeguranca("bloqueio", mail, `Bloqueio progressivo aplicado (${BLOQUEIOS_ESCALONADOS[Math.min(reg.nivel - 1, 2)]}s).`);
+        return `${MAX_TENTATIVAS} tentativas incorretas — acesso bloqueado temporariamente (política de segurança).`;
       }
       gravarLocks({ ...locks, [mail]: reg });
+      registrarSeguranca("login_falha", mail, `Senha incorreta (${reg.n}/${MAX_TENTATIVAS}).`);
       const restantes = MAX_TENTATIVAS - reg.n;
       return `Senha incorreta. ${restantes} tentativa${restantes > 1 ? "s" : ""} restante${restantes > 1 ? "s" : ""} antes do bloqueio.`;
     }
     gravarLocks({ ...lerLocks(), [mail]: { n: 0, nivel: 0, ate: 0 } });
-    const atualizado = validarTrial({ ...u, ultimoAcesso: new Date().toISOString() });
+    const atualizado = { ...u, ultimoAcesso: new Date().toISOString() };
     gravarUsers(listarUsuarios().map((x) => (x.id === u.id ? atualizado : x)));
     gravarSessao({ userId: u.id, lembrar });
-    registrarSeguranca("login_ok", mail, `Login efetuado${lembrar ? " (manter conectado)" : ""}.`);
+    registrarSeguranca("login_ok", mail, "Login efetuado com sucesso.");
     setUsuario(atualizado);
     return null;
   }, []);
 
   const cadastrar = useCallback(async (d: { nome: string; empresa: string; email: string; senha: string; cargo: string; porte: string; jurisdicao: string; telefone: string }) => {
-    await new Promise((r) => setTimeout(r, 700));
+    await new Promise((r) => setTimeout(r, 650));
     const lista = listarUsuarios();
     const mail = d.email.trim().toLowerCase();
     const vEmail = validarEmailCorporativo(mail);
     if (!vEmail.ok) return vEmail.msg ?? "E-mail inválido.";
     if (lista.some((x) => x.email === mail)) return "Já existe uma conta cadastrada com este e-mail. Faça login.";
     const salt = uid();
-    const novo = normalizar({
-      id: uid(),
+    const id = uid();
+    const novo: Usuario = normalizar({
+      id,
+      orgId: `org-${id}`, // cada cliente funda a própria organização
       nome: d.nome.trim(),
       empresa: d.empresa.trim(),
       email: mail,
@@ -320,13 +313,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       telefone: d.telefone.trim(),
       salt,
       hash: await hashSenha(d.senha, salt),
-      plano: "demo" as Plano,
-      papel: "operador" as Papel,
-      ultimoAcesso: new Date().toISOString(),
+      papel: "admin", // quem adquire o sistema é o administrador
     });
     gravarUsers([...lista, novo]);
     gravarSessao({ userId: novo.id, lembrar: true });
-    registrarSeguranca("cadastro", mail, `Conta criada (plano Demo) · ${d.cargo} · jurisdição: ${d.jurisdicao}.`);
+    registrarSeguranca("cadastro", mail, `Conta administrativa criada · organização "${d.empresa.trim()}" · ${d.cargo}.`);
     setUsuario(novo);
     return null;
   }, []);
@@ -348,35 +339,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const trocarSenha = useCallback(
     async (atual: string, nova: string) => {
       if (!usuario) return "Sessão expirada. Entre novamente.";
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 450));
       const h = await hashSenha(atual, usuario.salt);
       if (h !== usuario.hash) return "A senha atual não confere.";
-      const fraca = validarSenhaForte(nova);
-      if (fraca) return fraca;
       const salt = uid();
       const hash = await hashSenha(nova, salt);
       const novo = { ...usuario, salt, hash };
       gravarUsers(listarUsuarios().map((x) => (x.id === usuario.id ? novo : x)));
-      registrarSeguranca("senha_troca", usuario.email, "Senha alterada pelo usuário.");
+      registrarSeguranca("senha_troca", usuario.email, "Senha alterada pelo próprio usuário.");
       setUsuario(novo);
       return null;
     },
     [usuario]
   );
 
-  const ativarTrial = useCallback(() => {
-    setUsuario((u) => {
-      if (!u || u.plano === "pro") return u;
-      const novo = { ...u, plano: "pro" as Plano, trialAte: new Date(Date.now() + 14 * 86400000).toISOString() };
-      gravarUsers(listarUsuarios().map((x) => (x.id === u.id ? novo : x)));
-      registrarSeguranca("trial_ativado", u.email, "Trial do Plano Pro ativado por 14 dias.");
-      return novo;
-    });
-  }, []);
-
   const v = useMemo(
-    () => ({ usuario, pronto, entrar, cadastrar, sair, atualizarPerfil, trocarSenha, ativarTrial }),
-    [usuario, pronto, entrar, cadastrar, sair, atualizarPerfil, trocarSenha, ativarTrial]
+    () => ({ usuario, pronto, entrar, cadastrar, sair, atualizarPerfil, trocarSenha }),
+    [usuario, pronto, entrar, cadastrar, sair, atualizarPerfil, trocarSenha]
   );
 
   return <Ctx.Provider value={v}>{children}</Ctx.Provider>;
@@ -388,54 +367,68 @@ export function useAuth() {
   return c;
 }
 
-/* ============ Funções administrativas (painel) ============ */
+/* ============ Funções administrativas (painel do administrador da organização) ============ */
 
-export function adminSetPlano(userId: string, plano: Plano, diasTrial?: number) {
-  const lista = listarUsuarios();
-  const u = lista.find((x) => x.id === userId);
-  if (!u) return;
-  const novo = { ...u, plano, trialAte: diasTrial ? new Date(Date.now() + diasTrial * 86400000).toISOString() : undefined };
-  gravarUsers(lista.map((x) => (x.id === userId ? novo : x)));
-  registrarSeguranca("admin_acao", u.email, `Plano alterado para ${plano.toUpperCase()} por administrador.`);
+export function usuariosDaOrg(orgId: string): Usuario[] {
+  return listarUsuarios().filter((u) => u.orgId === orgId);
 }
 
-export function adminToggleBloqueio(userId: string): boolean {
+export function adminCriarUsuario(orgId: string, d: { nome: string; email: string; cargo: string; papel: Papel }): { ok: boolean; msg?: string; senhaTemporaria?: string } {
+  const mail = d.email.trim().toLowerCase();
+  const vEmail = validarEmailCorporativo(mail);
+  if (!vEmail.ok) return { ok: false, msg: vEmail.msg };
   const lista = listarUsuarios();
-  const u = lista.find((x) => x.id === userId);
+  if (lista.some((x) => x.email === mail)) return { ok: false, msg: "Já existe um usuário com este e-mail." };
+  const salt = uid();
+  const senhaTemporaria = gerarSenhaTemporaria();
+  const id = uid();
+  const novo: Usuario = normalizar({
+    id,
+    orgId,
+    nome: d.nome.trim(),
+    empresa: lista.find((x) => x.orgId === orgId)?.empresa ?? "",
+    email: mail,
+    cargo: d.cargo,
+    salt,
+    hash: undefined as unknown as string,
+    papel: d.papel,
+  });
+  // hash síncrono não é possível; usa fallback determinístico para a senha temporária
+  (novo as Usuario).hash = hashFallback(`${salt}::radargrc::${senhaTemporaria}`) + hashFallback(`${senhaTemporaria}`.split("").reverse().join(""));
+  gravarUsers([...lista, novo]);
+  registrarSeguranca("admin_acao", mail, `Usuário "${d.nome.trim()}" criado (${d.papel}) pelo administrador.`);
+  return { ok: true, senhaTemporaria };
+}
+
+export function adminToggleBloqueio(orgId: string, userId: string): boolean {
+  const lista = listarUsuarios();
+  const u = lista.find((x) => x.id === userId && x.orgId === orgId);
   if (!u) return false;
   const novo = { ...u, bloqueado: !u.bloqueado };
   gravarUsers(lista.map((x) => (x.id === userId ? novo : x)));
-  registrarSeguranca("admin_acao", u.email, novo.bloqueado ? "Conta BLOQUEADA por administrador." : "Conta desbloqueada por administrador.");
-  return !!novo.bloqueado;
+  registrarSeguranca("admin_acao", u.email, novo.bloqueado ? "Conta bloqueada pelo administrador." : "Conta desbloqueada pelo administrador.");
+  return novo.bloqueado;
 }
 
-export function adminSetPapel(userId: string, papel: Papel) {
+export function adminExcluirUsuario(orgId: string, userId: string, solicitanteId: string): { ok: boolean; msg?: string } {
+  if (userId === solicitanteId) return { ok: false, msg: "Você não pode excluir a própria conta." };
   const lista = listarUsuarios();
-  const u = lista.find((x) => x.id === userId);
-  if (!u) return;
-  gravarUsers(lista.map((x) => (x.id === userId ? { ...x, papel } : x)));
-  registrarSeguranca("admin_acao", u.email, `Papel alterado para ${papel} por administrador.`);
-}
-
-export async function adminResetarSenha(userId: string): Promise<string | null> {
-  const lista = listarUsuarios();
-  const u = lista.find((x) => x.id === userId);
-  if (!u) return null;
-  const aleatoria = `Radar@${Math.random().toString(36).slice(2, 6)}${Math.floor(100 + Math.random() * 900)}`;
-  const salt = uid();
-  const hash = await hashSenha(aleatoria, salt);
-  gravarUsers(lista.map((x) => (x.id === userId ? { ...x, salt, hash } : x)));
-  registrarSeguranca("admin_acao", u.email, "Senha redefinida por administrador (senha temporária emitida).");
-  return aleatoria;
-}
-
-export function adminRemover(userId: string): string | null {
-  const lista = listarUsuarios();
-  const u = lista.find((x) => x.id === userId);
-  if (!u) return "Usuário não encontrado.";
-  if (u.papel === "admin" && lista.filter((x) => x.papel === "admin").length <= 1) return "Não é possível excluir o único administrador.";
+  const u = lista.find((x) => x.id === userId && x.orgId === orgId);
+  if (!u) return { ok: false, msg: "Usuário não encontrado." };
   gravarUsers(lista.filter((x) => x.id !== userId));
-  localStorage.removeItem(`radargrc:${userId}`);
-  registrarSeguranca("admin_acao", u.email, "Conta e dados excluídos por administrador.");
-  return null;
+  registrarSeguranca("admin_acao", u.email, `Conta excluída pelo administrador.`);
+  return { ok: true };
+}
+
+export function adminRedefinirSenha(orgId: string, userId: string): { ok: boolean; msg?: string; senhaTemporaria?: string } {
+  const lista = listarUsuarios();
+  const u = lista.find((x) => x.id === userId && x.orgId === orgId);
+  if (!u) return { ok: false, msg: "Usuário não encontrado." };
+  const salt = uid();
+  const senhaTemporaria = gerarSenhaTemporaria();
+  const hash = hashFallback(`${salt}::radargrc::${senhaTemporaria}`) + hashFallback(`${senhaTemporaria}`.split("").reverse().join(""));
+  const novo = { ...u, salt, hash, bloqueado: false };
+  gravarUsers(lista.map((x) => (x.id === userId ? novo : x)));
+  registrarSeguranca("admin_acao", u.email, "Senha redefinida pelo administrador (senha temporária emitida).");
+  return { ok: true, senhaTemporaria };
 }

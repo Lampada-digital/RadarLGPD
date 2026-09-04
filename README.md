@@ -18,22 +18,31 @@ O **Radar GRC** é uma plataforma de privacidade e compliance que unifica, em um
 - 🇪🇺 **GDPR** — ROPA (Art. 30), bases de licitude (Art. 6/9/10), DPIA com os 9 critérios do EDPB (WP248) e gestão de transferências internacionais (Capítulo V);
 - 📋 **Frameworks ISO** — programas de implementação com controles reais, evidências, maturidade e **gerador de planos com IA** para as normas 27001, 27002, 27017, **27701**, 31000, 37001 e 37301 — e **geração de políticas e documentos em PDF para download** (capa, sumário, 2 políticas por norma, anexo de evidências e bloco de aprovação; versão CONTROLADO com 60%+ de conformidade, RASCUNHO com marca d'água antes disso);
 - 🏅 **Certificações dedicadas** — áreas próprias para **SOC 2 Type II** (Trust Services Criteria) e **PCI-DSS v4.0** (12 requisitos), cada uma com trilha de certificação e pacote documental em PDF para o auditor;
-- 🤖 **Governança de IA** — área própria com ISO/IEC 42001 + EU AI Act (classificação de risco, supervisão humana, transparência);
+- 🤖 **Governança de IA** — área própria com ISO/IEC 42001 + EU AI Act (classificação de risco, supervisão humana, transparência) e políticas prontas em PDF;
 - 🍪 **Gestão de Cookies** — área própria com inventário, CMP, banner com paridade, bloqueio prévio e prova de consentimento (ePrivacy + GDPR);
-- 🏅 **Certificações** — **SOC 2 Type II** (Trust Services Criteria) e **PCI-DSS v4.0** (12 requisitos) com controles mapeados, evidências e geração de documentos para auditoria/certificação;
-- 🤖 **Governança de IA** — Sistema de Gestão de IA (ISO/IEC 42001 + EU AI Act) com classificação de risco, supervisão humana, transparência e políticas prontas em PDF;
-- 🍪 **Gestão de Cookies** — programa de consentimento e cookies (ePrivacy + GDPR): inventário, CMP, banner, bloqueio prévio, prova de consentimento e políticas prontas;
 - 🤖 **Assistente de IA** — classificação de operações, recomendação de base legal, retenção, salvaguardas e risco — **heurística local, nenhum dado sai do navegador**;
-- 🔒 **Segurança** — acesso restrito a **e-mail corporativo** (domínios pessoais/gratuitos bloqueados no cadastro e no login), senhas com hash SHA-256+salt, bloqueio anti força-bruta, trilha de auditoria e script de hardening do servidor para download.
+- 🛡️ **Painel administrativo** — todo cliente é admin da própria organização: cria usuários com senha temporária, bloqueia, redefine senhas, exclui contas e audita eventos;
+- 🔒 **Segurança** — acesso restrito a **e-mail corporativo**, senhas com hash SHA-256+salt, bloqueio anti força-bruta progressivo, expiração de sessão por inatividade, trilha de auditoria e script de hardening do servidor para download.
 
-## Acesso de demonstração
+## Modelo de negócio e acesso
+
+**Licença mensal fixa, sem planos ou limites de uso.** Todo cliente que se cadastra torna-se
+**administrador da própria organização** e recebe o painel administrativo completo para:
+
+- ➕ **Criar usuários** (operadores ou admins) com senha temporária compartilhável;
+- 🔒 **Bloquear / desbloquear** contas imediatamente;
+- 🗑️ **Excluir usuários** (com confirmação e trilha de auditoria);
+- 🔑 **Redefinir senhas** e auditar todos os eventos de segurança.
+
+### Acesso de demonstração
 
 | Campo  | Valor                  |
 | ------ | ---------------------- |
 | E-mail | `demo@radarlgpd.app`   |
 | Senha  | `demo1234`             |
 
-> Você também pode **criar sua própria conta** na tela inicial. Cada usuário tem dados isolados (persistência local).
+> Você também pode **criar sua própria conta** na tela inicial (torna-se admin da sua organização).
+> Cada organização tem dados isolados (persistência local) e todos os recursos liberados.
 
 ## Stack
 

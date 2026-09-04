@@ -145,7 +145,7 @@ function ContasDemo({ usar }: { usar: (email: string, senha: string) => void }) 
       onClick={() => usar(DEMO_EMAIL, DEMO_SENHA)}
       className="group block w-full rounded-md border border-sand bg-paper px-3 py-2.5 text-left transition hover:border-moss hover:bg-moss/8 active:scale-[0.99]"
     >
-      <p className="text-[9.5px] font-extrabold tracking-[0.12em] text-amber uppercase">Demonstração · Plano Demo</p>
+      <p className="text-[9.5px] font-extrabold tracking-[0.12em] text-amber uppercase">Demonstração completa · acesso admin</p>
       <p className="mt-1 truncate text-[11.5px] font-bold text-ink">{DEMO_EMAIL}</p>
       <p className="text-[10.5px] text-ink-faint">
         senha: <code className="rounded-sm bg-paper-deep px-1 font-bold text-ink-soft">{DEMO_SENHA}</code>
@@ -326,7 +326,7 @@ function FormCadastro() {
         {carregando ? (<><Spinner /> Criando conta…</>) : (<>Criar conta gratuita <Ic name="arrow" size={14} className="transition-transform group-hover:translate-x-0.5" /></>)}
       </button>
       <p className="text-center text-[10.5px] text-ink-faint">
-        Sua conta inicia no <strong className="text-ink-soft">Plano Demo (gratuito)</strong> — upgrade ou trial Pro disponíveis a qualquer momento.
+        Acesso completo liberado: você será o <strong className="text-ink-soft">administrador</strong> da sua organização e poderá convidar e gerenciar sua equipe no painel administrativo.
       </p>
     </form>
   );
