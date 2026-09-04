@@ -137,6 +137,48 @@ export default function Dashboard({ irPara }: { irPara: (p: Page) => void }) {
         </Reveal>
       </div>
 
+      {/* acesso rápido às áreas dedicadas */}
+      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+        {(
+          [
+            { id: "soc2", pagina: "soc2" as Page, icone: "shield", desc: "Trust Services Criteria · exame Type II" },
+            { id: "pcidss", pagina: "pcidss" as Page, icone: "lock", desc: "12 requisitos de dados do cartão" },
+            { id: "ai-gov", pagina: "ai-gov" as Page, icone: "spark", desc: "ISO/IEC 42001 + EU AI Act" },
+            { id: "cookies", pagina: "cookies" as Page, icone: "filter", desc: "ePrivacy + GDPR · CMP e consentimento" },
+          ] as const
+        ).map((a, i) => {
+          const fw = FRAMEWORKS.find((f) => f.id === a.id);
+          const p = isoStats.por.find((x) => x.fw.id === a.id)?.p;
+          if (!fw || !p) return null;
+          return (
+            <Reveal key={a.id} delay={i * 60}>
+              <button
+                onClick={() => irPara(a.pagina)}
+                className="group block w-full overflow-hidden rounded-lg border border-sand bg-cream text-left transition-all duration-200 hover:-translate-y-1 hover:border-ink/25 hover:shadow-[0_16px_32px_-18px_rgba(19,46,38,0.4)]"
+              >
+                <span className="block h-1.5 w-full transition-all duration-300 group-hover:h-2.5" style={{ background: fw.cor }} />
+                <span className="block p-4">
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="grid size-8 place-items-center rounded-md" style={{ background: `${fw.cor}1a`, color: fw.cor }}>
+                      <Ic name={a.icone} size={16} sw={2} />
+                    </span>
+                    <span className="font-display text-[19px] leading-none font-extrabold" style={{ color: fw.cor }}>{p.pct}%</span>
+                  </span>
+                  <span className="font-display mt-2.5 block text-[14.5px] leading-snug font-bold text-ink">{fw.codigo}</span>
+                  <span className="mt-1 block text-[11px] leading-snug text-ink-soft">{a.desc}</span>
+                  <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-paper-deep">
+                    <span className="bar-grow block h-full rounded-full" style={{ width: `${Math.max(p.pct, 2)}%`, background: fw.cor, animationDelay: `${i * 80 + 150}ms` }} />
+                  </span>
+                  <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-ink-faint transition-colors group-hover:text-ink">
+                    Abrir área dedicada <Ic name="arrow" size={11} className="transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </span>
+              </button>
+            </Reveal>
+          );
+        })}
+      </div>
+
       {/* linha 2 */}
       <div className="grid gap-3.5 lg:grid-cols-3">
         <Reveal>
