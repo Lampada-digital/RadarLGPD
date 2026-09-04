@@ -23,7 +23,7 @@ export type Page =
   | "dashboard" | "assistente"
   | "lgpd-registro" | "lgpd-risco" | "lgpd-titulares" | "lgpd-bases"
   | "gdpr-ropa" | "gdpr-bases" | "gdpr-dpia"
-  | "iso" | "cert" | "ai-gov" | "cookies"
+  | "iso" | "soc2" | "pcidss" | "ai-gov" | "cookies"
   | "relatorios" | "seguranca" | "admin";
 
 const ISO_IDS = ["iso27001", "iso27002", "iso27017", "iso27701", "iso31000", "iso37001", "iso37301"];
@@ -60,7 +60,10 @@ const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; i
   },
   {
     secao: "Certificações",
-    itens: [{ id: "cert", label: "SOC 2 & PCI-DSS", icone: "shield" }],
+    itens: [
+      { id: "soc2", label: "SOC 2 Type II", icone: "shield" },
+      { id: "pcidss", label: "PCI-DSS v4.0", icone: "lock" },
+    ],
   },
   {
     secao: "Governança Digital",
@@ -94,7 +97,8 @@ const TITULOS: Record<Page, string> = {
   "gdpr-bases": "Bases legais GDPR",
   "gdpr-dpia": "DPIA e transferências",
   iso: "Programas ISO",
-  cert: "Certificações SOC 2 & PCI-DSS",
+  soc2: "Certificação SOC 2 Type II",
+  pcidss: "Conformidade PCI-DSS v4.0",
   "ai-gov": "Governança de IA",
   cookies: "Gestão de Cookies",
   relatorios: "Relatórios",
@@ -366,7 +370,8 @@ function Shell() {
             {pagina === "gdpr-bases" && <Gdpr view="bases" />}
             {pagina === "gdpr-dpia" && <Gdpr view="dpia" />}
             {pagina === "iso" && <Iso ids={ISO_IDS} grupo="iso" />}
-            {pagina === "cert" && <Iso ids={CERT_IDS} grupo="cert" />}
+            {pagina === "soc2" && <Iso ids={["soc2"]} />}
+            {pagina === "pcidss" && <Iso ids={["pcidss"]} />}
             {pagina === "ai-gov" && <Iso ids={["ai-gov"]} />}
             {pagina === "cookies" && <Iso ids={["cookies"]} />}
             {pagina === "relatorios" && <Reports />}

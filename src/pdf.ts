@@ -166,11 +166,24 @@ export function gerarBytesPdf(doc: Pdf): Uint8Array {
 }
 
 export function baixarPdf(nome: string, bytes: Uint8Array) {
-  const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" });
+  const buf = new ArrayBuffer(bytes.length);
+  new Uint8Array(buf).set(bytes);
+  const blob = new Blob([buf], { type: "application/pdf" });
+  baixarBlob(nome, blob);
+}
+
+/* Download robusto: âncora no DOM + evento real + fallback em nova aba */
+export function baixarBlob(nome: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = nome;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  a.rel = "noopener";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 5000);
 }

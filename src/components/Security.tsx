@@ -1,6 +1,7 @@
 import { useStore } from "../store";
 import { useAuth } from "../auth";
 import { SCRIPT_HARDENING } from "../aiExtra";
+import { baixarBlob } from "../pdf";
 import { Cabecalho, Ic, Reveal } from "./ui";
 
 const POSTURA = [
@@ -26,12 +27,7 @@ const COR_TIPO: Record<string, string> = {
 
 function baixar(nome: string, conteudo: string, tipo: string) {
   const blob = new Blob([conteudo], { type: tipo });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = nome;
-  a.click();
-  URL.revokeObjectURL(url);
+  baixarBlob(nome, blob);
 }
 
 export default function Security() {

@@ -16,7 +16,10 @@ O **Radar GRC** é uma plataforma de privacidade e compliance que unifica, em um
 
 - 🇧🇷 **LGPD** — registro de atividades de tratamento (art. 37), matriz de risco 5×5, bases legais (arts. 7º/11), fila de titulares (prazo de 15 dias) e checklist de conformidade;
 - 🇪🇺 **GDPR** — ROPA (Art. 30), bases de licitude (Art. 6/9/10), DPIA com os 9 critérios do EDPB (WP248) e gestão de transferências internacionais (Capítulo V);
-- 📋 **Frameworks ISO** — programas de implementação com controles reais, evidências, maturidade e **gerador de planos com IA** para as normas 27001, 27002, 27017, 27701, 31000, 37001 e 37301 — e **geração de políticas e documentos em PDF** (capa, sumário, 2 políticas por norma, anexo de evidências e bloco de aprovação; versão CONTROLADO quando o programa atinge 60% de conformidade, RASCUNHO com marca d'água antes disso);
+- 📋 **Frameworks ISO** — programas de implementação com controles reais, evidências, maturidade e **gerador de planos com IA** para as normas 27001, 27002, 27017, **27701**, 31000, 37001 e 37301 — e **geração de políticas e documentos em PDF para download** (capa, sumário, 2 políticas por norma, anexo de evidências e bloco de aprovação; versão CONTROLADO com 60%+ de conformidade, RASCUNHO com marca d'água antes disso);
+- 🏅 **Certificações dedicadas** — áreas próprias para **SOC 2 Type II** (Trust Services Criteria) e **PCI-DSS v4.0** (12 requisitos), cada uma com trilha de certificação e pacote documental em PDF para o auditor;
+- 🤖 **Governança de IA** — área própria com ISO/IEC 42001 + EU AI Act (classificação de risco, supervisão humana, transparência);
+- 🍪 **Gestão de Cookies** — área própria com inventário, CMP, banner com paridade, bloqueio prévio e prova de consentimento (ePrivacy + GDPR);
 - 🏅 **Certificações** — **SOC 2 Type II** (Trust Services Criteria) e **PCI-DSS v4.0** (12 requisitos) com controles mapeados, evidências e geração de documentos para auditoria/certificação;
 - 🤖 **Governança de IA** — Sistema de Gestão de IA (ISO/IEC 42001 + EU AI Act) com classificação de risco, supervisão humana, transparência e políticas prontas em PDF;
 - 🍪 **Gestão de Cookies** — programa de consentimento e cookies (ePrivacy + GDPR): inventário, CMP, banner, bloqueio prévio, prova de consentimento e políticas prontas;
