@@ -55,6 +55,13 @@ O projeto já está pronto: há um `vercel.json` com rewrites de SPA e headers d
 
 > Após o deploy, atualize as tags `og:image` / `og:url` no `index.html` com a URL absoluta do seu domínio (ex.: `https://seu-app.vercel.app/og.png`).
 
+### Se aparecer `404: NOT_FOUND`
+
+1. **Raiz do repositório** — o `package.json` precisa estar na raiz do repositório, não dentro de uma subpasta. Se o código viver em uma subpasta, informe-a em *Project Settings → General → Root Directory*.
+2. **Configurações do projeto** — em *Project Settings → General*, confirme: Framework Preset = `Vite`, Build Command = `npm run build`, Output Directory = `dist`.
+3. **`vercel.json` na raiz** — ele define o rewrite de SPA (`/(.*)` → `/index.html`) e os headers de segurança; sem ele, rotas internas quebram.
+4. **Novo deploy sem cache** — *Deployments → ⋯ → Redeploy*, desmarcando "Use existing Build Cache".
+
 ## Estrutura
 
 ```
