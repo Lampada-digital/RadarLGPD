@@ -1,0 +1,266 @@
+import { useMemo, useState } from "react";
+import { useStore } from "../store";
+import { ESTADOS_META, FRAMEWORKS, progressoFramework } from "../frameworks";
+import type { EstadoIso, Framework } from "../frameworks";
+import { nivelMaturidade, sugerirPlanoIso } from "../aiExtra";
+import type { PlanoIso } from "../aiExtra";
+import { Cabecalho, Campo, Ic, inputCls, Reveal, Ring } from "./ui";
+
+const ORDEM_ESTADOS: EstadoIso[] = ["nao", "andamento", "impl", "verif"];
+
+function baixarArquivo(nome: string, conteudo: string) {
+  const blob = new Blob([conteudo], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nome;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function Hub({ abrir }: { abrir: (id: string) => void }) {
+  const { iso } = useStore();
+  return (
+    <div>
+      <Cabecalho
+        kicker="Governança · 7 frameworks"
+        titulo="Programas de implementação ISO"
+        desc="Acompanhe a implementação controle a controle — do SGSI (27001) ao compliance (37301) — e gere planos de ação com IA a partir dos gaps reais de cada norma."
+      />
+      <div className="grid gap-3.5 sm:grid-cols-2">
+        {FRAMEWORKS.map((fw, i) => {
+          const p = progressoFramework(fw, iso);
+          const nivel = nivelMaturidade(p.pct);
+          return (
+            <Reveal key={fw.id} delay={Math.min(i * 60, 360)}>
+              <button
+                onClick={() => abrir(fw.id)}
+                className="group block w-full overflow-hidden rounded-lg border border-sand bg-cream text-left transition-all duration-200 hover:-translate-y-1 hover:border-ink/25 hover:shadow-[0_18px_36px_-18px_rgba(19,46,38,0.45)]"
+              >
+                <span className="block h-1.5 w-full transition-all duration-300 group-hover:h-2.5" style={{ background: fw.cor }} />
+                <span className="block p-4.5">
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="rounded-sm px-2 py-0.5 text-[10px] font-extrabold tracking-wide text-cream" style={{ background: fw.cor }}>{fw.codigo}</span>
+                    <span className="font-display text-[20px] leading-none font-extrabold" style={{ color: fw.cor }}>{p.pct}%</span>
+                  </span>
+                  <span className="font-display mt-2.5 block text-[15px] leading-snug font-bold text-ink">{fw.titulo}</span>
+                  <span className="mt-1 block text-[11.5px] leading-snug text-ink-soft">{fw.objetivo}</span>
+                  <span className="mt-3.5 block h-2 overflow-hidden rounded-full bg-paper-deep">
+                    <span className="bar-grow block h-full rounded-full" style={{ width: `${Math.max(p.pct, 2)}%`, background: fw.cor, animationDelay: `${i * 80 + 150}ms` }} />
+                  </span>
+                  <span className="mt-3 flex flex-wrap items-center gap-1.5 text-[10.5px] font-bold">
+                    <span className="rounded-full bg-moss/12 px-2 py-0.5 text-moss">{p.porEstado.impl + p.porEstado.verif} conformes</span>
+                    <span className="rounded-full bg-amber-soft px-2 py-0.5 text-ink">{p.porEstado.andamento} em andamento</span>
+                    <span className="rounded-full bg-paper-deep px-2 py-0.5 text-ink-soft">{p.porEstado.nao} não iniciados</span>
+                    <span className="ml-auto inline-flex items-center gap-1 text-ink-faint transition-colors group-hover:text-ink">
+                      Abrir programa <Ic name="arrow" size={11} className="transition-transform group-hover:translate-x-0.5" />
+                    </span>
+                  </span>
+                  <span className="mt-2 block text-[10px] font-extrabold tracking-[0.1em] uppercase" style={{ color: nivel.cor }}>{nivel.label}</span>
+                </span>
+              </button>
+            </Reveal>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
+  const { iso, setIso, registrar, toast } = useStore();
+  const [plano, setPlano] = useState<PlanoIso | null>(null);
+  const [gerando, setGerando] = useState(false);
+  const p = progressoFramework(fw, iso);
+  const nivel = nivelMaturidade(p.pct);
+  const mapa = iso[fw.id] ?? {};
+
+  const grupos = useMemo(() => {
+    const m = new Map<string, Framework["controles"]>();
+    fw.controles.forEach((c) => m.set(c.dominio, [...(m.get(c.dominio) ?? []), c]));
+    return [...m.entries()];
+  }, [fw]);
+
+  const gerar = () => {
+    setGerando(true);
+    setPlano(null);
+    setTimeout(() => {
+      setPlano(sugerirPlanoIso(fw.id, iso));
+      setGerando(false);
+      registrar("iso", `Plano de implementação gerado por IA para ${fw.codigo}.`);
+      toast(`Plano gerado para ${fw.codigo}: ${sugerirPlanoIso(fw.id, iso).gap.nao + sugerirPlanoIso(fw.id, iso).gap.andamento} controles pendentes.`, "ia");
+    }, 900);
+  };
+
+  const baixarPlano = () => {
+    if (!plano) return;
+    const md = `# Plano de implementação — ${fw.codigo}\n\n**${fw.titulo}**\n${fw.objetivo}\n\nGerado pela IA do Radar GRC em ${new Date().toLocaleDateString("pt-BR")}.\n\n## Diagnóstico\n\n- Controles avaliados: ${plano.gap.total}\n- Conformes (implementados/verificados): ${plano.gap.conformes}\n- Em andamento: ${plano.gap.andamento}\n- Não iniciados: ${plano.gap.nao}\n\n## Roadmap\n\n${plano.fases.map((f) => `### ${f.fase}\n_Prazo: ${f.prazo}_\n\n${f.acoes.map((a) => `- ${a}`).join("\n")}`).join("\n\n")}\n`;
+    baixarArquivo(`plano-${fw.id}-${Date.now()}.md`, md);
+    toast("Plano exportado em Markdown.");
+  };
+
+  const mudarEstado = (controlId: string, estado: EstadoIso) => {
+    const c = fw.controles.find((x) => x.id === controlId)!;
+    setIso(fw.id, controlId, { estado });
+    registrar("iso", `${fw.codigo} · ${c.ref} ${c.titulo} → ${ESTADOS_META[estado].label}.`);
+  };
+
+  return (
+    <div>
+      <button onClick={voltar} className="group mb-4 inline-flex items-center gap-1.5 text-[12.5px] font-bold text-moss transition hover:text-pine">
+        <Ic name="arrow" size={13} className="rotate-180 transition-transform group-hover:-translate-x-0.5" /> Todos os frameworks
+      </button>
+
+      <Reveal>
+        <div className="mb-5 overflow-hidden rounded-xl border border-sand bg-cream">
+          <span className="block h-2" style={{ background: fw.cor }} />
+          <div className="flex flex-wrap items-center justify-between gap-5 p-5 sm:p-6">
+            <div className="max-w-xl">
+              <span className="rounded-sm px-2 py-0.5 text-[10.5px] font-extrabold tracking-wide text-cream" style={{ background: fw.cor }}>{fw.codigo}</span>
+              <h1 className="font-display mt-2 text-[24px] leading-tight font-extrabold tracking-tight text-ink sm:text-[28px]">{fw.titulo}</h1>
+              <p className="mt-1 text-[13px] text-ink-soft">{fw.objetivo}</p>
+              <div className="mt-3 flex flex-wrap gap-1.5 text-[10.5px] font-bold">
+                <span className="rounded-full bg-moss/12 px-2 py-0.5 text-moss">{p.porEstado.impl + p.porEstado.verif} conformes</span>
+                <span className="rounded-full bg-amber-soft px-2 py-0.5 text-ink">{p.porEstado.andamento} em andamento</span>
+                <span className="rounded-full bg-paper-deep px-2 py-0.5 text-ink-soft">{p.porEstado.nao} não iniciados</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-5">
+              <div className="relative">
+                <Ring value={p.pct} size={116} stroke={9} cor={fw.cor} />
+                <div className="absolute inset-0 grid place-items-center">
+                  <p className="font-display text-[26px] font-extrabold text-ink">{p.pct}%</p>
+                </div>
+              </div>
+              <div className="max-w-[150px]">
+                <p className="text-[10px] font-bold tracking-[0.14em] text-ink-faint uppercase">Maturidade</p>
+                <p className="font-display mt-1 text-[14px] leading-tight font-bold" style={{ color: nivel.cor }}>{nivel.label}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5 border-t border-sand bg-paper px-5 py-3.5">
+            <button onClick={gerar} disabled={gerando} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-[12.5px] font-bold text-lime transition hover:bg-pine-deep active:scale-[0.98] disabled:opacity-70">
+              {gerando ? <span className="inline-block size-3.5 animate-spin rounded-full border-2 border-lime/30 border-t-lime" /> : <Ic name="wand" size={14} sw={2.2} />}
+              {gerando ? "Analisando gaps…" : "Gerar plano de implementação com IA"}
+            </button>
+            {plano && (
+              <button onClick={baixarPlano} className="inline-flex items-center gap-2 rounded-md border border-sand bg-cream px-4 py-2 text-[12.5px] font-bold text-ink-soft transition hover:border-moss hover:text-moss">
+                <Ic name="download" size={14} /> Baixar plano (.md)
+              </button>
+            )}
+            <span className="ml-auto text-[11px] text-ink-faint">Os estados alimentam o dashboard e os relatórios em tempo real.</span>
+          </div>
+        </div>
+      </Reveal>
+
+      {plano && (
+        <Reveal>
+          <div className="anim-pop rail-texture mb-5 rounded-xl border border-pine-line bg-pine p-5 text-cream">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-2 text-[10.5px] font-bold tracking-[0.16em] text-lime uppercase">
+                  <Ic name="spark" size={13} sw={2.4} /> Plano gerado por IA · baseado nos seus gaps
+                </p>
+                <h2 className="font-display mt-1 text-[18px] font-extrabold">Roadmap {fw.codigo}</h2>
+              </div>
+              <div className="flex flex-wrap gap-1.5 text-[10.5px] font-bold">
+                <span className="rounded-full bg-pine-deep px-2.5 py-1 text-cream/80">{plano.gap.total} controles</span>
+                <span className="rounded-full bg-rust/20 px-2.5 py-1 text-[#f0b39a]">{plano.gap.nao} não iniciados</span>
+                <span className="rounded-full bg-amber/20 px-2.5 py-1 text-amber-soft">{plano.gap.andamento} em andamento</span>
+                <span className="rounded-full bg-lime/15 px-2.5 py-1 text-lime">{plano.gap.conformes} conformes</span>
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {plano.fases.map((f, i) => (
+                <div key={f.fase} className="rounded-lg border border-pine-line bg-pine-deep/70 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-display text-[13.5px] font-bold text-cream">{f.fase}</p>
+                    <span className="shrink-0 rounded-sm bg-lime px-1.5 py-0.5 text-[9.5px] font-extrabold tracking-wide text-pine uppercase">{f.prazo}</span>
+                  </div>
+                  <ul className="mt-2.5 space-y-1.5">
+                    {f.acoes.map((a) => (
+                      <li key={a} className="flex gap-2 text-[12px] leading-snug text-cream/75">
+                        <span className="mt-1.5 size-1 shrink-0 rounded-full bg-lime/70" />
+                        {a}
+                      </li>
+                    ))}
+                  </ul>
+                  {i < plano.fases.length - 1 && <p className="mt-2.5 hidden text-[9.5px] font-bold tracking-widest text-cream/30 md:block">DEPOIS ↓</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </Reveal>
+      )}
+
+      <div className="space-y-5">
+        {grupos.map(([dominio, controles]) => (
+          <Reveal key={dominio}>
+            <section>
+              <h2 className="font-display mb-2.5 flex items-center gap-2 text-[14px] font-bold text-ink">
+                <span className="inline-block h-3.5 w-1 rounded-full" style={{ background: fw.cor }} />
+                {dominio}
+                <span className="text-[11px] font-semibold text-ink-faint">· {controles.length} controle(s)</span>
+              </h2>
+              <div className="overflow-hidden rounded-lg border border-sand bg-cream">
+                {controles.map((c) => {
+                  const st = mapa[c.id];
+                  const estado: EstadoIso = st?.estado ?? "nao";
+                  return (
+                    <div key={c.id} className="grid grid-cols-1 gap-2.5 border-b border-sand/70 px-4 py-3 transition-colors last:border-b-0 hover:bg-paper md:grid-cols-[1fr_280px] md:items-center md:gap-4">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-extrabold text-cream" style={{ background: fw.cor }}>{c.ref}</span>
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-bold text-ink">{c.titulo}</p>
+                          <p className="mt-0.5 text-[11.5px] leading-snug text-ink-soft">{c.desc}</p>
+                          {st?.nota && <p className="mt-1 rounded-sm bg-lime-soft/60 px-2 py-0.5 text-[10.5px] font-semibold text-pine">Nota: {st.nota}</p>}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                        <input
+                          defaultValue={st?.nota ?? ""}
+                          key={st?.nota ?? ""}
+                          onBlur={(e) => {
+                            if (e.target.value !== (st?.nota ?? "")) {
+                              setIso(fw.id, c.id, { nota: e.target.value || undefined });
+                              registrar("iso", `${fw.codigo} · ${c.ref}: nota atualizada.`);
+                            }
+                          }}
+                          placeholder="Evidência / nota…"
+                          className="w-32 flex-1 rounded-md border border-sand bg-cream px-2 py-1.5 text-[11px] text-ink outline-none transition placeholder:text-ink-faint focus:border-moss md:w-36"
+                        />
+                        <div className="flex overflow-hidden rounded-md border border-sand">
+                          {ORDEM_ESTADOS.map((e) => {
+                            const ativo = estado === e;
+                            const meta = ESTADOS_META[e];
+                            return (
+                              <button
+                                key={e}
+                                onClick={() => mudarEstado(c.id, e)}
+                                title={meta.label}
+                                className={`px-2 py-1.5 text-[9.5px] font-extrabold tracking-wide uppercase transition-all duration-150 ${ativo ? "" : "bg-cream text-ink-faint hover:bg-paper"}`}
+                                style={ativo ? { background: meta.bg, color: meta.fg } : undefined}
+                              >
+                                {meta.label.split(" ")[0]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          </Reveal>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function Iso() {
+  const [sel, setSel] = useState<string | null>(null);
+  const fw = FRAMEWORKS.find((f) => f.id === sel);
+  return fw ? <Detalhe fw={fw} voltar={() => setSel(null)} /> : <Hub abrir={setSel} />;
+}

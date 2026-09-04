@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Radar GRC">
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#132e26"/>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="none" stroke="#c9e94f" stroke-opacity="0.5" stroke-width="2"/>
+  <g fill="none" stroke="#c9e94f" stroke-linecap="round">
+    <circle cx="32" cy="32" r="21" stroke-opacity="0.35" stroke-width="2.5"/>
+    <circle cx="32" cy="32" r="12" stroke-opacity="0.55" stroke-width="2.5"/>
+    <circle cx="32" cy="32" r="3" stroke="none" fill="#c9e94f"/>
+  </g>
+  <path d="M32 32 L53 32 A21 21 0 0 0 47.6 17.4 Z" fill="#c9e94f" fill-opacity="0.9"/>
+  <circle cx="44" cy="20" r="3.2" fill="#0c1f18" stroke="#c9e94f" stroke-width="2"/>
+</svg>
