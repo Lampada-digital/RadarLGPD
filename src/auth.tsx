@@ -29,6 +29,37 @@ function uid() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
+/* ============ Validação de e-mail corporativo ============ */
+
+const DOMINIOS_PESSOAIS = new Set(
+  [
+    "gmail.com", "googlemail.com", "outlook.com", "outlook.com.br", "hotmail.com", "hotmail.com.br",
+    "live.com", "live.com.br", "msn.com", "windowslive.com", "yahoo.com", "yahoo.com.br", "ymail.com",
+    "rocketmail.com", "bol.com.br", "uol.com.br", "ig.com.br", "terra.com.br", "zipmail.com.br",
+    "aol.com", "icloud.com", "me.com", "mac.com", "proton.me", "protonmail.com", "protonmail.ch",
+    "zoho.com", "zoho.com.br", "gmx.com", "gmx.de", "mail.com", "email.com", "yandex.com", "yandex.ru",
+    "mail.ru", "bk.ru", "inbox.ru", "list.ru", "wp.pl", "o2.pl", "tuta.io", "tutanota.com", "tutamail.com",
+    "fastmail.com", "hey.com", "disroot.org", "riseup.net", "mailfence.com", "startmail.com",
+    "yahoo.co.uk", "hotmail.co.uk", "outlook.fr", "hotmail.fr", "yahoo.fr", "outlook.de", "hotmail.de",
+    "yahoo.de", "outlook.it", "hotmail.it", "yahoo.it", "yahoo.co.jp", "hotmail.com.ar", "yahoo.com.ar",
+    "hotmail.com.mx", "yahoo.com.mx", "outlook.es", "hotmail.es", "yahoo.es",
+    /* descartáveis */
+    "mailinator.com", "guerrillamail.com", "tempmail.com", "temp-mail.org", "10minutemail.com",
+    "trashmail.com", "yopmail.com", "sharklasers.com", "getnada.com", "mohmal.com",
+  ].map((d) => d.toLowerCase())
+);
+
+export function validarEmailCorporativo(email: string): { ok: boolean; msg: string; dominio?: string } {
+  const mail = email.trim().toLowerCase();
+  const m = mail.match(/^[a-z0-9._%+-]+@([a-z0-9-]+(?:\.[a-z0-9-]+)+)$/i);
+  if (!m) return { ok: false, msg: "Informe um e-mail válido (ex.: nome@suaempresa.com.br)." };
+  const dominio = m[1].toLowerCase();
+  if (DOMINIOS_PESSOAIS.has(dominio)) {
+    return { ok: false, msg: "E-mail pessoal/gratuito não é aceito. Use seu e-mail corporativo (ex.: nome@suaempresa.com.br)." };
+  }
+  return { ok: true, msg: "", dominio };
+}
+
 /* Hash de senha: SHA-256 (Web Crypto) com salt; fallback FNV em contexto não-seguro */
 function hashFallback(str: string): string {
   let h1 = 0x811c9dc5 >>> 0;
@@ -152,6 +183,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const entrar = useCallback(async (email: string, senha: string, lembrar: boolean) => {
     const mail = email.trim().toLowerCase();
+    const vEmail = validarEmailCorporativo(mail);
+    if (!vEmail.ok) return vEmail.msg;
     const bloqueado = bloqueioRestante(mail);
     if (bloqueado > 0) return `Conta bloqueada temporariamente após ${MAX_TENTATIVAS} tentativas. Aguarde ${bloqueado}s e tente novamente.`;
     await new Promise((r) => setTimeout(r, 600));
@@ -182,6 +215,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await new Promise((r) => setTimeout(r, 700));
     const lista = lerUsers();
     const mail = email.trim().toLowerCase();
+    const vEmail = validarEmailCorporativo(mail);
+    if (!vEmail.ok) return vEmail.msg;
     if (lista.some((x) => x.email === mail)) return "Já existe uma conta cadastrada com este e-mail. Faça login.";
     const salt = uid();
     const novo: Usuario = {

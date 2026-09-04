@@ -9,6 +9,7 @@ const POSTURA = [
   { t: "Sessão isolada por usuário", d: "Cada conta possui storage próprio; dados não se misturam." },
   { t: "Trilha de auditoria (accountability)", d: "Login, edições, exclusões e exportações registrados por operação." },
   { t: "Política de senha mínima", d: "8+ caracteres com medidor de força no cadastro e na troca." },
+  { t: "Acesso restrito a e-mail corporativo", d: "Domínios pessoais e gratuitos (Gmail, Outlook, Yahoo…) bloqueados no cadastro e no login." },
   { t: "Proteção XSS nativa", d: "React escapa todo o conteúdo; nenhum HTML injetado (dangerouslySetInnerHTML)." },
   { t: "Minimização de dados", d: "Apenas o necessário é coletado — alinhado ao Art. 6º, III da LGPD e Art. 5(1)(c) GDPR." },
   { t: "Hardening de produção", d: "Script de segurança gerável (firewall, SSH, CSP, fail2ban, TLS)." },

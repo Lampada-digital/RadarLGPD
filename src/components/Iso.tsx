@@ -4,6 +4,8 @@ import { ESTADOS_META, FRAMEWORKS, progressoFramework } from "../frameworks";
 import type { EstadoIso, Framework } from "../frameworks";
 import { nivelMaturidade, sugerirPlanoIso } from "../aiExtra";
 import type { PlanoIso } from "../aiExtra";
+import { gerarPacotePdf, PDF_ADEQUADO_MIN } from "../isoDocs";
+import { useAuth } from "../auth";
 import { Cabecalho, Campo, Ic, inputCls, Reveal, Ring } from "./ui";
 
 const ORDEM_ESTADOS: EstadoIso[] = ["nao", "andamento", "impl", "verif"];
@@ -69,11 +71,38 @@ function Hub({ abrir }: { abrir: (id: string) => void }) {
 
 function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
   const { iso, setIso, registrar, toast } = useStore();
+  const { usuario } = useAuth();
   const [plano, setPlano] = useState<PlanoIso | null>(null);
   const [gerando, setGerando] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
   const p = progressoFramework(fw, iso);
   const nivel = nivelMaturidade(p.pct);
   const mapa = iso[fw.id] ?? {};
+  const oficial = p.pct >= PDF_ADEQUADO_MIN;
+
+  const gerarPdf = () => {
+    setGerandoPdf(true);
+    setTimeout(() => {
+      try {
+        gerarPacotePdf({
+          fw,
+          mapa,
+          pct: p.pct,
+          empresa: usuario?.empresa || usuario?.nome || "Minha Organização",
+          responsavel: usuario?.nome ?? "Responsável pelo programa",
+        });
+        registrar("iso", `Pacote documental ${fw.codigo} gerado em PDF (${oficial ? "CONTROLADO" : "RASCUNHO"}).`);
+        toast(
+          oficial
+            ? `Pacote de políticas ${fw.codigo} gerado — documento CONTROLADO pronto para aprovação.`
+            : `Pacote gerado em modo RASCUNHO (marcado d'água). Alcance ${PDF_ADEQUADO_MIN}% de conformidade para a versão oficial.`,
+          oficial ? "ok" : "warn"
+        );
+      } finally {
+        setGerandoPdf(false);
+      }
+    }, 450);
+  };
 
   const grupos = useMemo(() => {
     const m = new Map<string, Framework["controles"]>();
@@ -132,9 +161,13 @@ function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
                   <p className="font-display text-[26px] font-extrabold text-ink">{p.pct}%</p>
                 </div>
               </div>
-              <div className="max-w-[150px]">
+              <div className="max-w-[170px]">
                 <p className="text-[10px] font-bold tracking-[0.14em] text-ink-faint uppercase">Maturidade</p>
                 <p className="font-display mt-1 text-[14px] leading-tight font-bold" style={{ color: nivel.cor }}>{nivel.label}</p>
+                <p className={`mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[9.5px] font-extrabold tracking-wide uppercase ${oficial ? "bg-moss/12 text-moss" : "bg-amber-soft text-ink"}`}>
+                  <Ic name="doc" size={10} sw={2.4} />
+                  {oficial ? "Documentos oficiais liberados" : `PDF oficial a partir de ${PDF_ADEQUADO_MIN}%`}
+                </p>
               </div>
             </div>
           </div>
@@ -148,6 +181,15 @@ function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
                 <Ic name="download" size={14} /> Baixar plano (.md)
               </button>
             )}
+            <button
+              onClick={gerarPdf}
+              disabled={gerandoPdf}
+              title={oficial ? "Pacote CONTROLADO com políticas, sumário e anexo de evidências" : "Gera em modo RASCUNHO até atingir 60% de conformidade"}
+              className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-[12.5px] font-bold transition active:scale-[0.98] disabled:opacity-70 ${oficial ? "bg-moss text-cream hover:bg-pine" : "border border-amber/60 bg-amber-soft text-ink hover:bg-amber-soft/70"}`}
+            >
+              {gerandoPdf ? <span className="inline-block size-3.5 animate-spin rounded-full border-2 border-current/30 border-t-current" /> : <Ic name="printer" size={14} />}
+              {gerandoPdf ? "Montando PDF…" : oficial ? "Gerar políticas (PDF oficial)" : "Gerar políticas (rascunho)"}
+            </button>
             <span className="ml-auto text-[11px] text-ink-faint">Os estados alimentam o dashboard e os relatórios em tempo real.</span>
           </div>
         </div>

@@ -1,7 +1,22 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { DEMO_EMAIL, DEMO_SENHA, useAuth } from "../auth";
+import { DEMO_EMAIL, DEMO_SENHA, useAuth, validarEmailCorporativo } from "../auth";
 import { Ic, MedidorSenha } from "./ui";
+
+/* Indicador ao vivo: domínio corporativo vs. e-mail pessoal */
+function IndicadorDominio({ email }: { email: string }) {
+  const v = email.includes("@") ? validarEmailCorporativo(email) : null;
+  if (!v) return null;
+  return v.ok ? (
+    <p className="anim-pop mt-1 flex items-center gap-1.5 text-[11px] font-bold text-moss">
+      <Ic name="check" size={11} sw={3} /> Domínio corporativo verificado{v.dominio ? ` (${v.dominio})` : ""}
+    </p>
+  ) : (
+    <p className="anim-pop mt-1 flex items-center gap-1.5 text-[11px] font-bold text-rust">
+      <Ic name="x" size={11} sw={3} /> Somente e-mail corporativo — pessoal/gratuito não é aceito
+    </p>
+  );
+}
 
 const EVENTOS = [
   { t: "Folha de pagamento", d: "Art. 7º, II · risco 6 · 680 titulares" },
@@ -109,7 +124,8 @@ function FormLogin() {
   const enviar = async (e: FormEvent) => {
     e.preventDefault();
     const errs: typeof erros = {};
-    if (!/^\S+@\S+\.\S+$/.test(email)) errs.email = "Informe um e-mail válido.";
+    const vEmail = validarEmailCorporativo(email);
+    if (!vEmail.ok) errs.email = vEmail.msg;
     if (!senha) errs.senha = "Informe sua senha.";
     setErros(errs);
     if (Object.keys(errs).length) return;
@@ -129,8 +145,9 @@ function FormLogin() {
           {info}
         </div>
       )}
-      <CampoAuth label="E-mail" erro={erros.email}>
-        <InputAuth valor={email} onChange={setEmail} placeholder="voce@empresa.com.br" type="email" icone="mail" erro={!!erros.email} />
+      <CampoAuth label="E-mail corporativo" erro={erros.email}>
+        <InputAuth valor={email} onChange={setEmail} placeholder="voce@suaempresa.com.br" type="email" icone="mail" erro={!!erros.email} />
+        <IndicadorDominio email={email} />
       </CampoAuth>
       <CampoAuth label="Senha" erro={erros.senha}>
         <InputAuth valor={senha} onChange={setSenha} placeholder="••••••••" type={ver ? "text" : "password"} icone="shield" erro={!!erros.senha} sufixo={<OlhoSenha ver={ver} onToggle={() => setVer(!ver)} />} />
@@ -180,7 +197,8 @@ function FormCadastro() {
     e.preventDefault();
     const errs: Record<string, string> = {};
     if (nome.trim().length < 3) errs.nome = "Informe seu nome completo.";
-    if (!/^\S+@\S+\.\S+$/.test(email)) errs.email = "Informe um e-mail válido.";
+    const vEmail = validarEmailCorporativo(email);
+    if (!vEmail.ok) errs.email = vEmail.msg;
     if (senha.length < 8) errs.senha = "A senha precisa de pelo menos 8 caracteres.";
     if (confirma !== senha || !confirma) errs.confirma = "A confirmação não coincide com a senha.";
     if (!aceite) errs.aceite = "É necessário aceitar para continuar.";
@@ -203,8 +221,9 @@ function FormCadastro() {
         <CampoAuth label="Organização" erro={erros.empresa}>
           <InputAuth valor={empresa} onChange={setEmpresa} placeholder="Empresa Ltda. (opcional)" icone="grid" />
         </CampoAuth>
-        <CampoAuth label="E-mail" erro={erros.email}>
-          <InputAuth valor={email} onChange={setEmail} placeholder="voce@empresa.com.br" type="email" icone="mail" erro={!!erros.email} />
+        <CampoAuth label="E-mail corporativo" erro={erros.email}>
+          <InputAuth valor={email} onChange={setEmail} placeholder="voce@suaempresa.com.br" type="email" icone="mail" erro={!!erros.email} />
+          <IndicadorDominio email={email} />
         </CampoAuth>
       </div>
       <div>
