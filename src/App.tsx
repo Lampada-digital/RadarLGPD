@@ -18,6 +18,7 @@ import Cookies from "./components/Cookies";
 import Security from "./components/Security";
 import Reports from "./components/Reports";
 import AdminPanel from "./components/AdminPanel";
+import Landing from "./components/Landing";
 import Plans, { TrialGate, diasRestantesTrial } from "./components/Plans";
 import { iniciarProtecao, useProtecao } from "./protection";
 
@@ -455,14 +456,20 @@ export default function App() {
 
 function Root() {
   const { usuario, pronto, sair } = useAuth();
+  const [tela, setTela] = useState<"landing" | "auth">("landing");
 
   /* conta bloqueada por administrador derruba a sessão ativa */
   useEffect(() => {
     if (usuario?.bloqueado) sair();
   }, [usuario, sair]);
 
+  /* ao sair da conta, volta para a landing de vendas */
+  useEffect(() => {
+    if (!usuario) setTela("landing");
+  }, [usuario]);
+
   if (!pronto) return <Splash />;
-  if (!usuario) return <AuthScreen />;
+  if (!usuario) return tela === "landing" ? <Landing onAcessar={() => setTela("auth")} /> : <AuthScreen onVoltar={() => setTela("landing")} />;
   /* trava comercial: free trial de 7 dias expirado e sem assinatura → tela de ativação */
   const trialExpirado =
     !usuario.demo && usuario.plano === "trial" && !!usuario.trialAte && new Date(usuario.trialAte).getTime() < Date.now();

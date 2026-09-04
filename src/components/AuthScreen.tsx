@@ -334,7 +334,7 @@ function FormCadastro() {
 
 /* ---------------- tela ---------------- */
 
-export default function AuthScreen() {
+export default function AuthScreen({ onVoltar }: { onVoltar?: () => void }) {
   const { entrar } = useAuth();
   const [modo, setModo] = useState<"login" | "cadastro">("login");
   const [demoCarregando, setDemoCarregando] = useState(false);
@@ -394,6 +394,12 @@ export default function AuthScreen() {
       {/* painel de acesso */}
       <div className="flex items-center justify-center overflow-y-auto bg-paper p-6 sm:p-10">
         <div className="w-full max-w-[440px]">
+          {onVoltar && (
+            <button onClick={onVoltar} className="group mb-4 inline-flex items-center gap-1.5 text-[12.5px] font-bold text-moss transition hover:text-pine">
+              <Ic name="arrow" size={13} className="rotate-180 transition-transform group-hover:-translate-x-0.5" /> Voltar para a página inicial
+            </button>
+          )}
+
           <div className="mb-6 flex items-center gap-3 lg:hidden">
             <span className="relative grid size-10 place-items-center overflow-hidden rounded-lg border border-pine-line bg-pine">
               <span className="radar-sweep absolute inset-0" style={{ background: "conic-gradient(from 0deg, rgba(201,233,79,0.35), transparent 75deg)" }} />
