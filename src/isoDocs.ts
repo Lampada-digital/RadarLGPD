@@ -475,6 +475,51 @@ export const POLITICAS: Record<string, PoliticaIso[]> = {
       ],
     },
   ],
+  iso22301: [
+    {
+      codigo: "POL-BCM-001",
+      titulo: "Política de Continuidade de Negócios (ISO 22301:2019)",
+      objetivo: "Estabelecer o Sistema de Gestão de Continuidade de Negócios (SGCN), garantindo que a organização continue entregando produtos e serviços em nível aceitável após eventos disruptivos.",
+      escopo: "Todas as atividades, processos, pessoas, instalações, tecnologia e informações críticas identificadas na BIA, aplicável a toda a organização e a fornecedores essenciais.",
+      referencias: ["ISO 22301:2019 — Cláusulas 4 a 10", "ISO 22313 — Orientações de uso", "ISO 31000 — Gestão de riscos (apoio)"],
+      diretrizes: [
+        "A alta direção deve demonstrar comprometimento, aprovando a política, alocando recursos e promovendo a cultura de continuidade (Cl. 5.1).",
+        "A política de continuidade deve ser documentada, comunicada e revisada periodicamente (Cl. 5.2).",
+        "Papéis e responsabilidades de continuidade devem ser formalmente atribuídos (Cl. 5.3).",
+        "Riscos e oportunidades relevantes ao SGCN devem ser determinados e tratados (Cl. 6.1).",
+        "A BIA deve identificar atividades prioritárias, dependências, RTO/RPO e impactos ao longo do tempo (Cl. 8.2).",
+        "Estratégias de continuidade devem ser selecionadas dentro dos objetivos de recuperação definidos (Cl. 8.4).",
+        "Planos e procedimentos devem permitir resposta, alerta, ativação, operação e recuperação (Cl. 8.5).",
+        "Um programa de exercícios deve validar os planos ao menos anualmente, registrando lições aprendidas (Cl. 8.6).",
+        "O desempenho do SGCN deve ser monitorado, auditado e analisado criticamente pela direção (Cl. 9.1–9.3).",
+      ],
+      responsabilidades: [
+        { papel: "Alta direção", texto: "Aprovar política, prover recursos e realizar análise crítica do SGCN." },
+        { papel: "Gestor de continuidade (BCM Manager)", texto: "Operar o SGCN: BIA, planos, exercícios e indicadores." },
+        { papel: "Líderes de área", texto: "Manter planos de recuperação de suas atividades e participar dos exercícios." },
+      ],
+    },
+    {
+      codigo: "POL-BCM-002",
+      titulo: "Política de BIA, Planos de Recuperação e Exercícios",
+      objetivo: "Definir a metodologia da Análise de Impacto nos Negócios (BIA), a estrutura dos planos de continuidade e a cadência de exercícios e testes.",
+      escopo: "Processo de BIA, planos de continuidade de negócios (BCP), planos de recuperação de desastres (DRP) e programa de exercícios.",
+      referencias: ["ISO 22301:2019 — Cláusulas 8.2, 8.3, 8.4, 8.5 e 8.6", "ISO/TS 22317 — Orientação para BIA", "ISO/TS 22398 — Diretrizes para exercícios"],
+      diretrizes: [
+        "A BIA deve ser conduzida com metodologia documentada, abrangendo entrevistas, formulários e consolidação de dados.",
+        "Cada atividade prioritária deve ter RTO, RPO, recursos mínimos e dependências (internas e externas) definidos.",
+        "Avaliação de riscos de descontinuidade deve considerar ameaças plausíveis e vulnerabilidades (Cl. 8.3).",
+        "Planos devem conter: critérios de ativação, equipes com contatos, procedimentos passo a passo, locais alternativos e comunicação de crise.",
+        "Exercícios devem variar de complexidade (tabletop → simulação → teste completo) e registrar relatórios com ações corretivas.",
+        "Resultados de exercícios e incidentes reais devem retroalimentar a BIA e os planos (melhoria contínua).",
+      ],
+      responsabilidades: [
+        { papel: "Gestor de continuidade", texto: "Conduzir a BIA, consolidar resultados e coordenar o programa de exercícios." },
+        { papel: "Equipes de resposta", texto: "Executar os planos durante exercícios e incidentes reais." },
+        { papel: "TI", texto: "Manter DRPs, backups e infraestrutura de recuperação compatíveis com RTO/RPO." },
+      ],
+    },
+  ],
 };
 
 /* ================= montagem do PDF ================= */

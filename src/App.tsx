@@ -18,6 +18,7 @@ import Cookies from "./components/Cookies";
 import Security from "./components/Security";
 import Reports from "./components/Reports";
 import AdminPanel from "./components/AdminPanel";
+import Landing from "./components/Landing";
 import Plans, { TrialGate, diasRestantesTrial } from "./components/Plans";
 import { iniciarProtecao, useProtecao } from "./protection";
 
@@ -28,7 +29,7 @@ export type Page =
   | "iso" | "soc2" | "pcidss" | "ai-gov" | "cookies"
   | "relatorios" | "seguranca" | "planos" | "admin";
 
-const ISO_IDS = ["iso27001", "iso27002", "iso27017", "iso27701", "iso31000", "iso37001", "iso37301"];
+const ISO_IDS = ["iso27001", "iso27002", "iso27017", "iso27701", "iso22301", "iso31000", "iso37001", "iso37301"];
 const CERT_IDS = ["soc2", "pcidss"];
 
 const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; icone: string; badge?: "ia" | "abertas" }[] }[] = [
@@ -275,9 +276,9 @@ function Shell() {
       )}
       <div className="mx-3 mb-4 flex items-center justify-between rounded-md border border-pine-line bg-pine-deep/60 px-3 py-2">
         <span className="flex items-center gap-1.5 text-[9px] font-extrabold tracking-[0.14em] text-lime/80 uppercase">
-          <span className="pulse-dot size-1.5 rounded-full bg-lime" /> v2.2 · online
+          <span className="pulse-dot size-1.5 rounded-full bg-lime" /> v2.3 · online
         </span>
-        <span className="text-[9px] font-bold text-cream/35">11 frameworks · PDF</span>
+        <span className="text-[9px] font-bold text-cream/35">12 frameworks · PDF</span>
       </div>
     </>
   );
@@ -455,14 +456,20 @@ export default function App() {
 
 function Root() {
   const { usuario, pronto, sair } = useAuth();
+  const [tela, setTela] = useState<"landing" | "auth">("landing");
 
   /* conta bloqueada por administrador derruba a sessão ativa */
   useEffect(() => {
     if (usuario?.bloqueado) sair();
   }, [usuario, sair]);
 
+  /* ao sair da conta, volta para a landing de vendas */
+  useEffect(() => {
+    if (!usuario) setTela("landing");
+  }, [usuario]);
+
   if (!pronto) return <Splash />;
-  if (!usuario) return <AuthScreen />;
+  if (!usuario) return tela === "landing" ? <Landing onAcessar={() => setTela("auth")} /> : <AuthScreen onVoltar={() => setTela("landing")} />;
   /* trava comercial: free trial de 7 dias expirado e sem assinatura → tela de ativação */
   const trialExpirado =
     !usuario.demo && usuario.plano === "trial" && !!usuario.trialAte && new Date(usuario.trialAte).getTime() < Date.now();

@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useStore } from "../store";
 import { BASES_ART6, BASES_ART9, CRITERIOS_DPIA, DADOS_GDPR, MECANISMOS_TRANSFERENCIA, TITULARES_GDPR, TODAS_BASES_GDPR } from "../gdpr";
 import type { GdprAtividade } from "../gdpr";
 import { fmtData, uid } from "../types";
 import { analisarGdpr } from "../aiExtra";
+import { baixarModelo, importarGdpr, MODELO_GDPR, parseCsv } from "../importCsv";
 import { Cabecalho, Campo, ChipToggle, Ic, inputCls, Modal, Reveal } from "./ui";
 
 const MEDIDAS_GDPR = [
@@ -47,7 +48,8 @@ function baseLabel(id?: string) {
 /* ================= ROPA (Art. 30) ================= */
 
 function Ropa() {
-  const { gdprAtividades, addGdprAtividade, updateGdprAtividade, removeGdprAtividade, toast } = useStore();
+  const { gdprAtividades, addGdprAtividade, updateGdprAtividade, removeGdprAtividade, toast, registrar } = useStore();
+  const importRef = useRef<HTMLInputElement>(null);
   const [busca, setBusca] = useState("");
   const [fBase, setFBase] = useState("");
   const [form, setForm] = useState<GdprAtividade | null>(null);
@@ -81,9 +83,32 @@ function Ropa() {
       toast("Registro do Art. 30 atualizado.");
     } else {
       addGdprAtividade({ ...form, origem: "manual" });
-      toast("Operação registrada no ROPA (Art. 30 GDPR).");
+      toast(`Operação registrada no ROPA — nível de risco atualizado: ${RISCO_META[form.risco].label}.`);
     }
     setForm(null);
+  };
+
+  /* ---------- importação de planilha → alimenta o ROPA automaticamente ---------- */
+  const importarArquivo = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const texto = await file.text();
+      const linhas = parseCsv(texto);
+      const { itens, erros } = importarGdpr(linhas);
+      itens.forEach((a) => addGdprAtividade(a));
+      if (itens.length) {
+        const alto = itens.filter((a) => a.risco === 3).length;
+        registrar("sistema", `Importação de planilha: ${itens.length} operação(ões) GDPR adicionada(s) de "${file.name}".`);
+        toast(`Importadas ${itens.length} operação(ões) para o ROPA${alto ? ` — ${alto} de risco alto` : ""}.`);
+      } else {
+        toast("Nenhuma linha válida encontrada na planilha.", "warn");
+      }
+      erros.slice(0, 3).forEach((e) => toast(e, "warn"));
+    } catch {
+      toast("Não foi possível ler o arquivo. Use CSV exportado do Excel/Google Sheets.", "warn");
+    } finally {
+      if (importRef.current) importRef.current.value = "";
+    }
   };
 
   const autoIA = () => {
@@ -121,9 +146,18 @@ function Ropa() {
         titulo="ROPA — Records of Processing"
         desc="Registro das atividades de tratamento sob responsabilidade do controller/processor, com bases dos Art. 6 e 9, categorias de dados, destinatários e transferências (Capítulo V)."
         acao={
-          <button onClick={abrirNova} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2.5 text-[13px] font-bold text-lime shadow-sm transition hover:bg-pine-deep active:scale-[0.98]">
-            <Ic name="plus" size={14} sw={2.6} /> Nova operação
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => importRef.current?.click()} className="inline-flex items-center gap-2 rounded-md border border-sand bg-cream px-3.5 py-2.5 text-[12.5px] font-bold text-ink-soft shadow-sm transition hover:border-moss hover:text-moss active:scale-[0.98]">
+              <Ic name="download" size={14} className="rotate-180" /> Importar planilha
+            </button>
+            <button onClick={() => baixarModelo("modelo-ropa-gdpr.csv", MODELO_GDPR)} className="inline-flex items-center gap-2 rounded-md border border-sand bg-cream px-3.5 py-2.5 text-[12.5px] font-bold text-ink-soft shadow-sm transition hover:border-moss hover:text-moss active:scale-[0.98]">
+              <Ic name="doc" size={14} /> Modelo
+            </button>
+            <button onClick={abrirNova} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2.5 text-[13px] font-bold text-lime shadow-sm transition hover:bg-pine-deep active:scale-[0.98]">
+              <Ic name="plus" size={14} sw={2.6} /> Nova operação
+            </button>
+            <input ref={importRef} type="file" accept=".csv,.tsv,.txt" className="hidden" onChange={(e) => void importarArquivo(e.target.files?.[0])} />
+          </div>
         }
       />
 

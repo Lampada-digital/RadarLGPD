@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../store";
 import { TODAS_BASES, ZONA_META, zonaRisco } from "../types";
 import { Cabecalho, Ic, Reveal } from "./ui";
@@ -6,6 +6,19 @@ import { Cabecalho, Ic, Reveal } from "./ui";
 export default function RiskMatrix() {
   const { atividades } = useStore();
   const [sel, setSel] = useState<{ p: number; i: number } | null>(null);
+
+  /* indicador ao vivo: pisca sempre que o mapeamento muda e a matriz se recalcula */
+  const [recalc, setRecalc] = useState(false);
+  const primeira = useRef(true);
+  useEffect(() => {
+    if (primeira.current) {
+      primeira.current = false;
+      return;
+    }
+    setRecalc(true);
+    const t = setTimeout(() => setRecalc(false), 2400);
+    return () => clearTimeout(t);
+  }, [atividades]);
 
   const celulas = useMemo(() => {
     const m = new Map<string, typeof atividades>();
@@ -31,6 +44,17 @@ export default function RiskMatrix() {
         kicker="Gestão de riscos · Art. 46 e 38"
         titulo="Matriz de risco 5 × 5"
         desc="Cada ponto é uma atividade de tratamento posicionada por probabilidade × impacto. Clique numa célula para inspecionar e priorize o plano de ação pelos quadrantes críticos."
+        acao={
+          <span
+            className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[11px] font-extrabold tracking-wide uppercase transition-all duration-300 ${
+              recalc ? "scale-105 border-lime bg-lime text-pine shadow-[0_8px_20px_-8px_rgba(201,233,79,0.8)]" : "border-sand bg-cream text-ink-faint"
+            }`}
+            title="A matriz deriva do mapeamento: qualquer atividade criada, editada ou importada reposiciona os pontos automaticamente."
+          >
+            <span className={`size-2 rounded-full ${recalc ? "pulse-dot bg-pine" : "bg-moss"}`} />
+            {recalc ? "Matriz recalculada agora" : "Recalcula em tempo real"}
+          </span>
+        }
       />
 
       <div className="grid gap-4 lg:grid-cols-[1fr_340px]">

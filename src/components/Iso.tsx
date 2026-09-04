@@ -1,15 +1,206 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useStore } from "../store";
 import { ESTADOS_META, FRAMEWORKS, progressoFramework } from "../frameworks";
-import type { EstadoIso, Framework } from "../frameworks";
+import type { Anexo, ControleEstado, ControleIso, EstadoIso, Framework } from "../frameworks";
+import { fmtTamanho } from "../frameworks";
 import { nivelMaturidade, sugerirPlanoIso } from "../aiExtra";
 import type { PlanoIso } from "../aiExtra";
 import { gerarPacotePdf, PDF_ADEQUADO_MIN } from "../isoDocs";
 import { baixarBlob } from "../pdf";
 import { useAuth } from "../auth";
-import { Cabecalho, Campo, Ic, inputCls, Reveal, Ring } from "./ui";
+import { Cabecalho, Campo, Ic, inputCls, Modal, Reveal, Ring } from "./ui";
 
 const ORDEM_ESTADOS: EstadoIso[] = ["nao", "andamento", "impl", "verif"];
+const MAX_DOC_BYTES = 350 * 1024; // documentos ficam em base64 no armazenamento local
+
+/* comprime imagens antes de guardar (canvas → JPEG) para caber no storage */
+function comprimirImagem(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 1100;
+        const escala = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.width * escala));
+        canvas.height = Math.max(1, Math.round(img.height * escala));
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Canvas indisponível"));
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.78));
+      };
+      img.onerror = () => reject(new Error("Imagem inválida"));
+      img.src = String(reader.result);
+    };
+    reader.onerror = () => reject(new Error("Falha ao ler o arquivo"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function lerDoc(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Falha ao ler o arquivo"));
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ================= modal de anexos (evidências: documentos e imagens) ================= */
+
+function AnexoModal({
+  aberto, onFechar, controle, anexos, onChange,
+}: {
+  aberto: boolean;
+  onFechar: () => void;
+  controle: ControleIso | null;
+  anexos: Anexo[];
+  onChange: (a: Anexo[]) => void;
+}) {
+  const { toast, registrar } = useStore();
+  const [lightbox, setLightbox] = useState<Anexo | null>(null);
+  const [carregando, setCarregando] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  if (!controle) return null;
+
+  const adicionar = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setCarregando(true);
+    const novos: Anexo[] = [];
+    for (const file of Array.from(files)) {
+      const ext = (file.name.split(".").pop() ?? "").toLowerCase();
+      try {
+        if (file.type.startsWith("image/")) {
+          const dataUrl = await comprimirImagem(file);
+          novos.push({ id: `an-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, nome: file.name, tipo: "img", ext, tamanho: file.size, dataUrl, ts: new Date().toISOString() });
+        } else if (file.size <= MAX_DOC_BYTES) {
+          const dataUrl = await lerDoc(file);
+          novos.push({ id: `an-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, nome: file.name, tipo: "doc", ext, tamanho: file.size, dataUrl, ts: new Date().toISOString() });
+        } else {
+          toast(`"${file.name}" é grande demais para o armazenamento local (máx. ${Math.round(MAX_DOC_BYTES / 1024)} KB). Comprima ou registre o link na nota.`, "warn");
+        }
+      } catch {
+        toast(`Não foi possível processar "${file.name}".`, "warn");
+      }
+    }
+    if (novos.length) {
+      onChange([...anexos, ...novos]);
+      registrar("iso", `Controle ${controle.ref} — ${novos.length} evidência(s) anexada(s) (${novos.map((n) => n.nome).join(", ")}).`);
+      toast(`${novos.length} evidência(s) anexada(s) ao controle ${controle.ref}.`);
+    }
+    setCarregando(false);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const remover = (id: string) => {
+    onChange(anexos.filter((a) => a.id !== id));
+    registrar("iso", `Controle ${controle.ref} — evidência removida.`);
+  };
+
+  const baixarAnexo = (a: Anexo) => {
+    if (!a.dataUrl) {
+      toast("Este anexo não tem conteúdo armazenado.", "warn");
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = a.dataUrl;
+    link.download = a.nome;
+    document.body.appendChild(link);
+    link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+    setTimeout(() => document.body.removeChild(link), 800);
+  };
+
+  return (
+    <>
+      <Modal aberto={aberto} onFechar={onFechar} titulo={<span>Evidências · <span className="text-moss">{controle.ref}</span> {controle.titulo}</span>} largura="max-w-2xl">
+        <div className="space-y-4">
+          {/* área de upload */}
+          <div
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => { e.preventDefault(); void adicionar(e.dataTransfer.files); }}
+            className="group flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-sand bg-paper px-4 py-7 text-center transition hover:border-moss hover:bg-moss/6"
+          >
+            <span className={`grid size-11 place-items-center rounded-full bg-paper-deep text-moss transition group-hover:bg-pine group-hover:text-lime ${carregando ? "animate-pulse" : ""}`}>
+              {carregando ? <span className="size-4 animate-spin rounded-full border-2 border-moss/30 border-t-moss" /> : <Ic name="download" size={20} className="rotate-180" />}
+            </span>
+            <p className="text-[13px] font-bold text-ink">Arraste documentos ou imagens das evidências</p>
+            <p className="text-[11px] text-ink-faint">PDF, Word, Excel, CSV, Markdown, TXT (até 350 KB) · imagens são comprimidas automaticamente</p>
+            <button
+              onClick={() => inputRef.current?.click()}
+              disabled={carregando}
+              className="mt-1 inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-[12.5px] font-bold text-lime transition hover:bg-pine-deep active:scale-[0.98] disabled:opacity-60"
+            >
+              <Ic name="plus" size={13} sw={2.6} /> Selecionar arquivos
+            </button>
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.md,.txt"
+              className="hidden"
+              onChange={(e) => void adicionar(e.target.files)}
+            />
+          </div>
+
+          {/* lista de anexos */}
+          {anexos.length === 0 ? (
+            <p className="rounded-md border border-dashed border-sand px-3 py-5 text-center text-[12px] text-ink-faint">
+              Nenhuma evidência anexada ainda — fotos, prints, contratos, atas e relatórios fortalecem a auditoria.
+            </p>
+          ) : (
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {anexos.map((a) => (
+                <li key={a.id} className="anim-pop group flex items-center gap-3 rounded-md border border-sand bg-cream p-2.5 transition hover:border-moss/50">
+                  {a.tipo === "img" && a.dataUrl ? (
+                    <button onClick={() => setLightbox(a)} className="size-12 shrink-0 overflow-hidden rounded-md border border-sand transition hover:opacity-85" aria-label="Ampliar imagem">
+                      <img src={a.dataUrl} alt={a.nome} className="size-12 object-cover" />
+                    </button>
+                  ) : (
+                    <span className="grid size-12 shrink-0 place-items-center rounded-md bg-paper-deep text-moss">
+                      <Ic name="doc" size={20} />
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[12px] font-bold text-ink" title={a.nome}>{a.nome}</p>
+                    <p className="text-[10px] text-ink-faint">
+                      {a.ext.toUpperCase() || "ARQ"} · {fmtTamanho(a.tamanho)} · {new Date(a.ts).toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    {a.dataUrl && (
+                      <button onClick={() => baixarAnexo(a)} className="rounded-md border border-sand p-1.5 text-ink-soft transition hover:border-moss hover:text-moss" title="Baixar" aria-label="Baixar anexo">
+                        <Ic name="download" size={12} />
+                      </button>
+                    )}
+                    <button onClick={() => remover(a.id)} className="rounded-md border border-sand p-1.5 text-ink-soft transition hover:border-rust hover:bg-rust/10 hover:text-rust" title="Remover" aria-label="Remover anexo">
+                      <Ic name="trash" size={12} />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="flex items-center gap-1.5 text-[10.5px] text-ink-faint">
+            <Ic name="shield" size={11} sw={2.2} className="text-moss" />
+            Evidências ficam atreladas ao controle e viajam no pacote PDF de auditoria (metadados).
+          </p>
+        </div>
+      </Modal>
+
+      {/* lightbox */}
+      {lightbox?.dataUrl && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-pine-deep/85 p-6 backdrop-blur-sm" onClick={() => setLightbox(null)}>
+          <div className="anim-pop relative max-h-full max-w-3xl">
+            <img src={lightbox.dataUrl} alt={lightbox.nome} className="max-h-[80vh] rounded-lg border border-cream/20 object-contain shadow-2xl" />
+            <p className="mt-2 text-center text-[11.5px] font-semibold text-cream/70">{lightbox.nome} · clique fora para fechar</p>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 function baixarArquivo(nome: string, conteudo: string) {
   const blob = new Blob([conteudo], { type: "text/markdown;charset=utf-8" });
@@ -67,6 +258,8 @@ function Detalhe({ fw, voltar, unico }: { fw: Framework; voltar: () => void; uni
   const [plano, setPlano] = useState<PlanoIso | null>(null);
   const [gerando, setGerando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
+  const [anexoId, setAnexoId] = useState<string | null>(null);
+  const controleAnexo = anexoId ? fw.controles.find((c) => c.id === anexoId) ?? null : null;
   const p = progressoFramework(fw, iso);
   const nivel = nivelMaturidade(p.pct);
   const mapa = iso[fw.id] ?? {};
@@ -325,6 +518,21 @@ function Detalhe({ fw, voltar, unico }: { fw: Framework; voltar: () => void; uni
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                        <button
+                          onClick={() => setAnexoId(c.id)}
+                          title="Anexar evidências (documentos e imagens)"
+                          className={`relative inline-flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-[10px] font-extrabold tracking-wide uppercase transition active:scale-95 ${
+                            st?.anexos?.length
+                              ? "border-moss bg-moss/10 text-moss"
+                              : "border-sand bg-cream text-ink-faint hover:border-moss hover:text-moss"
+                          }`}
+                        >
+                          <Ic name="doc" size={12} sw={2.2} />
+                          Evidências
+                          {(st?.anexos?.length ?? 0) > 0 && (
+                            <span className="grid min-w-4 place-items-center rounded-full bg-moss px-1 text-[9px] font-extrabold text-cream">{st!.anexos!.length}</span>
+                          )}
+                        </button>
                         <input
                           defaultValue={st?.nota ?? ""}
                           key={st?.nota ?? ""}
@@ -363,6 +571,16 @@ function Detalhe({ fw, voltar, unico }: { fw: Framework; voltar: () => void; uni
           </Reveal>
         ))}
       </div>
+
+      <AnexoModal
+        aberto={!!controleAnexo}
+        onFechar={() => setAnexoId(null)}
+        controle={controleAnexo}
+        anexos={(controleAnexo && mapa[controleAnexo.id]?.anexos) || []}
+        onChange={(a) => {
+          if (controleAnexo) setIso(fw.id, controleAnexo.id, { anexos: a.length ? a : undefined });
+        }}
+      />
     </div>
   );
 }
