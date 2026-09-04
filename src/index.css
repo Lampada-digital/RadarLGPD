@@ -199,6 +199,24 @@ input[type="range"] {
   accent-color: var(--color-moss);
 }
 
+/* ---------- camada de proteção anticópia ---------- */
+.protegido {
+  user-select: none;
+  -webkit-user-select: none;
+}
+.protegido input,
+.protegido textarea,
+.protegido select,
+.protegido [contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+.protegido img,
+.protegido canvas {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal,
   .anim-rise,

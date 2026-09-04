@@ -44,6 +44,19 @@ O **Radar GRC** é uma plataforma de privacidade e compliance que unifica, em um
 > Você também pode **criar sua própria conta** na tela inicial (torna-se admin da sua organização).
 > Cada organização tem dados isolados (persistência local) e todos os recursos liberados.
 
+## Proteção do sistema (anticópia)
+
+O Radar GRC embarca uma camada de dissuasão contra visualização, cópia e clonagem:
+
+- 🔒 **Atalhos bloqueados** — F12, Ctrl+Shift+I/J/C (DevTools), Ctrl+U (ver fonte), Ctrl+S (salvar página), Ctrl+P (imprimir) e Ctrl+A fora de campos;
+- 🖱️ **Botão direito e seleção de texto** desativados na interface (campos de formulário permanecem usáveis);
+- 💧 **Marca d'água de sessão** — o e-mail do usuário logado aparece sutilmente em todas as telas, tornando qualquer captura de tela compartilhada rastreável;
+- 👁️ **Detecção de DevTools** — indicador no topo muda para "MONITORANDO" e o evento vai para a trilha de auditoria;
+- 🧱 **Anti-embutimento** — CSP `frame-ancestors 'none'` + frame-busting impedem rodar o sistema dentro de outro site;
+- 📋 **Aviso de propriedade** no console e registro de cada tentativa bloqueada.
+
+> **Nota técnica honesta:** nenhuma aplicação web consegue impedir 100% a leitura do código pelo navegador — esta camada **desincentiva e audita** tentativas. A proteção efetiva do código-fonte é manter o **repositório privado** e publicar apenas o build (`dist`), nunca o `src`.
+
 ## Stack
 
 - **React 18** + **TypeScript** + **Vite**

@@ -18,6 +18,7 @@ import Cookies from "./components/Cookies";
 import Security from "./components/Security";
 import Reports from "./components/Reports";
 import AdminPanel from "./components/AdminPanel";
+import { iniciarProtecao, useProtecao } from "./protection";
 
 export type Page =
   | "dashboard" | "assistente"
@@ -120,6 +121,22 @@ function Splash() {
   );
 }
 
+/* marca d'água da sessão: identifica qualquer captura de tela compartilhada */
+function MarcaDagua({ email }: { email: string }) {
+  const texto = `${email} · radar grc · ${new Date().toLocaleDateString("pt-BR")}`;
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[44] overflow-hidden select-none print:hidden" aria-hidden="true">
+      <div className="absolute -inset-[25%] flex rotate-[-22deg] flex-wrap content-start items-start gap-x-14 gap-y-24 opacity-[0.04]">
+        {Array.from({ length: 40 }).map((_, i) => (
+          <span key={i} className="font-display text-[15px] font-extrabold tracking-[0.18em] whitespace-nowrap text-ink uppercase">
+            {texto}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Shell() {
   const { usuario, sair } = useAuth();
   const { score, solicitacoes, registrar } = useStore();
@@ -138,6 +155,12 @@ function Shell() {
     userRef.current = usuario;
     if (usuario && prev !== usuario) registrar("auth", `Login efetuado: ${usuario.email}`);
     if (!usuario && prev) registrar("auth", `Logout: ${prev.email}`);
+  }, [usuario, registrar]);
+
+  /* camada de proteção anticópia (ativa por sessão logada) */
+  const protecao = useProtecao();
+  useEffect(() => {
+    if (usuario) iniciarProtecao(usuario.email, (detalhe) => registrar("seguranca", detalhe));
   }, [usuario, registrar]);
 
   /* expiração de sessão por inatividade */
@@ -248,7 +271,8 @@ function Shell() {
   );
 
   return (
-    <div className="flex h-full">
+    <div className="protegido flex h-full">
+      <MarcaDagua email={usuario?.email ?? "sessão"} />
       {/* sidebar desktop */}
       <aside className="rail-texture sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-pine-line bg-pine lg:flex print:hidden">
         {SidebarInner}
@@ -309,6 +333,23 @@ function Shell() {
               </span>
               <span className="font-display text-[13px] font-extrabold">{score}</span>
             </button>
+
+            {/* estado da proteção anticópia */}
+            {protecao.devtools ? (
+              <span
+                className="anim-pop hidden items-center gap-1.5 rounded-md border border-rust/50 bg-rust-soft px-2.5 py-1.5 text-[10px] font-extrabold tracking-[0.1em] text-rust md:inline-flex"
+                title="Ferramentas de inspeção detectadas — a sessão está sob monitoramento elevado e as tentativas são auditadas."
+              >
+                <Ic name="eye" size={11} sw={2.4} /> MONITORANDO
+              </span>
+            ) : (
+              <span
+                className="hidden items-center gap-1.5 rounded-md border border-sand bg-cream px-2.5 py-1.5 text-[10px] font-extrabold tracking-[0.1em] text-moss md:inline-flex"
+                title={`Proteção anticópia ativa · ${protecao.bloqueios} tentativa(s) bloqueada(s) nesta sessão`}
+              >
+                <Ic name="lock" size={11} sw={2.4} /> PROTEGIDO
+              </span>
+            )}
 
             {/* menu do usuário */}
             <div className="relative">
