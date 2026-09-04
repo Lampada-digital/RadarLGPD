@@ -20,17 +20,13 @@ function baixarArquivo(nome: string, conteudo: string) {
   URL.revokeObjectURL(url);
 }
 
-function Hub({ abrir }: { abrir: (id: string) => void }) {
+function Hub({ abrir, lista, kicker, titulo, desc }: { abrir: (id: string) => void; lista: Framework[]; kicker: string; titulo: string; desc: string }) {
   const { iso } = useStore();
   return (
     <div>
-      <Cabecalho
-        kicker="Governança · 7 frameworks"
-        titulo="Programas de implementação ISO"
-        desc="Acompanhe a implementação controle a controle — do SGSI (27001) ao compliance (37301) — e gere planos de ação com IA a partir dos gaps reais de cada norma."
-      />
+      <Cabecalho kicker={kicker} titulo={titulo} desc={desc} />
       <div className="grid gap-3.5 sm:grid-cols-2">
-        {FRAMEWORKS.map((fw, i) => {
+        {lista.map((fw, i) => {
           const p = progressoFramework(fw, iso);
           const nivel = nivelMaturidade(p.pct);
           return (
@@ -69,7 +65,7 @@ function Hub({ abrir }: { abrir: (id: string) => void }) {
   );
 }
 
-function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
+function Detalhe({ fw, voltar, unico }: { fw: Framework; voltar: () => void; unico?: boolean }) {
   const { iso, setIso, registrar, toast } = useStore();
   const { usuario } = useAuth();
   const [plano, setPlano] = useState<PlanoIso | null>(null);
@@ -136,9 +132,11 @@ function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
 
   return (
     <div>
-      <button onClick={voltar} className="group mb-4 inline-flex items-center gap-1.5 text-[12.5px] font-bold text-moss transition hover:text-pine">
-        <Ic name="arrow" size={13} className="rotate-180 transition-transform group-hover:-translate-x-0.5" /> Todos os frameworks
-      </button>
+      {!unico && (
+        <button onClick={voltar} className="group mb-4 inline-flex items-center gap-1.5 text-[12.5px] font-bold text-moss transition hover:text-pine">
+          <Ic name="arrow" size={13} className="rotate-180 transition-transform group-hover:-translate-x-0.5" /> Todos os frameworks
+        </button>
+      )}
 
       <Reveal>
         <div className="mb-5 overflow-hidden rounded-xl border border-sand bg-cream">
@@ -301,8 +299,28 @@ function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
   );
 }
 
-export default function Iso() {
+const TEXTO_HUB: Record<string, { kicker: string; titulo: string; desc: string }> = {
+  iso: {
+    kicker: "Governança · ISO",
+    titulo: "Programas de implementação ISO",
+    desc: "Acompanhe a implementação controle a controle — do SGSI (27001) ao compliance (37301) — e gere planos de ação com IA a partir dos gaps reais de cada norma.",
+  },
+  cert: {
+    kicker: "Certificações · SOC 2 & PCI-DSS",
+    titulo: "Certificações SOC 2 e PCI-DSS",
+    desc: "Prepare-se para o exame SOC 2 Type II e a conformidade PCI-DSS v4.0 com controles mapeados, evidências e geração de documentos para auditoria.",
+  },
+};
+
+export default function Iso({ ids, grupo }: { ids?: string[]; grupo?: string }) {
   const [sel, setSel] = useState<string | null>(null);
-  const fw = FRAMEWORKS.find((f) => f.id === sel);
-  return fw ? <Detalhe fw={fw} voltar={() => setSel(null)} /> : <Hub abrir={setSel} />;
+  const lista = ids ? FRAMEWORKS.filter((f) => ids.includes(f.id)) : FRAMEWORKS;
+  /* grupo de um único framework abre direto o detalhe */
+  if (ids?.length === 1) {
+    const fw = FRAMEWORKS.find((f) => f.id === ids[0]);
+    return fw ? <Detalhe fw={fw} voltar={() => undefined} unico /> : null;
+  }
+  const txt = TEXTO_HUB[grupo ?? "iso"];
+  const fw = lista.find((f) => f.id === sel);
+  return fw ? <Detalhe fw={fw} voltar={() => setSel(null)} /> : <Hub abrir={setSel} lista={lista} kicker={txt.kicker} titulo={txt.titulo} desc={txt.desc} />;
 }

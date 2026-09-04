@@ -131,7 +131,7 @@ export default function Dashboard({ irPara }: { irPara: (p: Page) => void }) {
       <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
         <Reveal delay={40}><Stat label="Atividades LGPD" valor={atividades.length} detalhe={`${atividades.filter((a) => a.origem === "ia").length} classificadas pela IA · ${lgpd.sensiveis} com dado sensível`} /></Reveal>
         <Reveal delay={90}><Stat label="Operações GDPR (Art. 30)" valor={gdprAtividades.length} detalhe={`${gdpr.especiais} tratam categorias especiais (Art. 9)`} tom="azul" /></Reveal>
-        <Reveal delay={140}><Stat label="Controles ISO conformes" valor={isoStats.conformes} sufixo={`/${isoStats.total}`} detalhe="Implementados ou verificados nos 7 frameworks" tom="moss" /></Reveal>
+        <Reveal delay={140}><Stat label="Controles conformes" valor={isoStats.conformes} sufixo={`/${isoStats.total}`} detalhe="Implementados/verificados nos 11 frameworks e certificações" tom="moss" /></Reveal>
         <Reveal delay={190}>
           <Stat label="Solicitações em aberto" valor={abertas.length} detalhe={pertoPrazo.length ? `${pertoPrazo.length} a ≤5 dias do prazo legal` : "Todas dentro do prazo (15d LGPD · 30d GDPR)"} tom={pertoPrazo.length ? "amber" : "ink"} />
         </Reveal>
@@ -203,7 +203,7 @@ export default function Dashboard({ irPara }: { irPara: (p: Page) => void }) {
         <Reveal delay={160}>
           <div className="flex h-full flex-col rounded-lg border border-sand bg-cream p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-[15px] font-bold text-ink">Programas ISO</h2>
+              <h2 className="font-display text-[15px] font-bold text-ink">Frameworks & Certificações</h2>
               <Ic name="layers" size={16} className="text-moss" />
             </div>
             <ul className="space-y-2.5">

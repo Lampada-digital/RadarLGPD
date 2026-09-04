@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
-import { ADMIN_EMAIL, ADMIN_SENHA, DEMO_EMAIL, DEMO_SENHA, useAuth, validarEmailCorporativo, validarSenhaForte } from "../auth";
+import { DEMO_EMAIL, DEMO_SENHA, useAuth, validarEmailCorporativo, validarSenhaForte } from "../auth";
 import { Ic, MedidorSenha } from "./ui";
 
 const EVENTOS = [
@@ -140,23 +140,17 @@ function IndicadorDominio({ email }: { email: string }) {
 
 function ContasDemo({ usar }: { usar: (email: string, senha: string) => void }) {
   return (
-    <div className="grid gap-2 sm:grid-cols-2">
-      {[
-        { rotulo: "Operador · Plano Demo", email: DEMO_EMAIL, senha: DEMO_SENHA, cor: "text-amber" },
-        { rotulo: "Administrador · Acesso total", email: ADMIN_EMAIL, senha: ADMIN_SENHA, cor: "text-lime" },
-      ].map((c) => (
-        <button
-          key={c.email}
-          type="button"
-          onClick={() => usar(c.email, c.senha)}
-          className="group rounded-md border border-sand bg-paper px-3 py-2.5 text-left transition hover:border-moss hover:bg-moss/8 active:scale-[0.99]"
-        >
-          <p className={`text-[9.5px] font-extrabold tracking-[0.12em] uppercase ${c.cor}`}>{c.rotulo}</p>
-          <p className="mt-1 truncate text-[11.5px] font-bold text-ink">{c.email}</p>
-          <p className="text-[10.5px] text-ink-faint">senha: <code className="rounded-sm bg-paper-deep px-1 font-bold text-ink-soft">{c.senha}</code></p>
-        </button>
-      ))}
-    </div>
+    <button
+      type="button"
+      onClick={() => usar(DEMO_EMAIL, DEMO_SENHA)}
+      className="group block w-full rounded-md border border-sand bg-paper px-3 py-2.5 text-left transition hover:border-moss hover:bg-moss/8 active:scale-[0.99]"
+    >
+      <p className="text-[9.5px] font-extrabold tracking-[0.12em] text-amber uppercase">Demonstração · Plano Demo</p>
+      <p className="mt-1 truncate text-[11.5px] font-bold text-ink">{DEMO_EMAIL}</p>
+      <p className="text-[10.5px] text-ink-faint">
+        senha: <code className="rounded-sm bg-paper-deep px-1 font-bold text-ink-soft">{DEMO_SENHA}</code>
+      </p>
+    </button>
   );
 }
 

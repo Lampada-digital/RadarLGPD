@@ -23,7 +23,11 @@ export type Page =
   | "dashboard" | "assistente"
   | "lgpd-registro" | "lgpd-risco" | "lgpd-titulares" | "lgpd-bases"
   | "gdpr-ropa" | "gdpr-bases" | "gdpr-dpia"
-  | "iso" | "relatorios" | "seguranca" | "admin";
+  | "iso" | "cert" | "ai-gov" | "cookies"
+  | "relatorios" | "seguranca" | "admin";
+
+const ISO_IDS = ["iso27001", "iso27002", "iso27017", "iso27701", "iso31000", "iso37001", "iso37301"];
+const CERT_IDS = ["soc2", "pcidss"];
 
 const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; icone: string; badge?: "ia" | "abertas" }[] }[] = [
   {
@@ -55,6 +59,17 @@ const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; i
     itens: [{ id: "iso", label: "Frameworks ISO", icone: "brain" }],
   },
   {
+    secao: "Certificações",
+    itens: [{ id: "cert", label: "SOC 2 & PCI-DSS", icone: "shield" }],
+  },
+  {
+    secao: "Governança Digital",
+    itens: [
+      { id: "ai-gov", label: "Governança de IA", icone: "spark" },
+      { id: "cookies", label: "Gestão de Cookies", icone: "filter" },
+    ],
+  },
+  {
     secao: "Entrega",
     itens: [
       { id: "relatorios", label: "Relatórios", icone: "printer" },
@@ -79,6 +94,9 @@ const TITULOS: Record<Page, string> = {
   "gdpr-bases": "Bases legais GDPR",
   "gdpr-dpia": "DPIA e transferências",
   iso: "Programas ISO",
+  cert: "Certificações SOC 2 & PCI-DSS",
+  "ai-gov": "Governança de IA",
+  cookies: "Gestão de Cookies",
   relatorios: "Relatórios",
   seguranca: "Central de segurança",
   admin: "Painel administrativo",
@@ -347,7 +365,10 @@ function Shell() {
             {pagina === "gdpr-ropa" && <Gdpr view="ropa" />}
             {pagina === "gdpr-bases" && <Gdpr view="bases" />}
             {pagina === "gdpr-dpia" && <Gdpr view="dpia" />}
-            {pagina === "iso" && <Iso />}
+            {pagina === "iso" && <Iso ids={ISO_IDS} grupo="iso" />}
+            {pagina === "cert" && <Iso ids={CERT_IDS} grupo="cert" />}
+            {pagina === "ai-gov" && <Iso ids={["ai-gov"]} />}
+            {pagina === "cookies" && <Iso ids={["cookies"]} />}
             {pagina === "relatorios" && <Reports />}
             {pagina === "seguranca" && <Security />}
             {pagina === "admin" && ehAdmin && <AdminPanel />}
