@@ -203,6 +203,8 @@ export function gerarSnippet(cfg: BannerConfig): string {
   // Observação: o código gerado usa apenas concatenação (sem crase/`${}`) para rodar em qualquer navegador.
   return `/* Radar GRC — Banner de Cookies v1 · gerado automaticamente. Instale antes de </body>. */
 (function () {
+  function status(t) { try { var s = document.getElementById("rc-status"); if (s) s.textContent = t; } catch (e) {} }
+  try {
   if (window.RadarCookies) return;
   var CFG = { site: "${cfg.siteNome}", cor: "${cfg.cor}", pos: "${cfg.posicao}", atraso: ${cfg.atrasoMs}, cats: [${cats}] };
   var K_CONSENT = "${CHAVE_CONSENT}", K_EVENTS = "${CHAVE_EVENTOS}";
@@ -258,7 +260,7 @@ export function gerarSnippet(cfg: BannerConfig): string {
       document.querySelectorAll("#rc-cats input").forEach(function (i) { if (i.checked && i.dataset.cat !== "necessario") out.push(i.dataset.cat); });
       return out;
     }
-    function fechar() { var el = document.getElementById("rc-banner"); if (el) el.remove(); }
+    function fechar() { var el = document.getElementById("rc-banner"); if (el) el.remove(); launcher(); }
     function salvar(tipo, cats) {
       gravar(K_CONSENT, { v: 1, ts: Date.now(), site: CFG.site, tipo: tipo, categorias: cats });
       evento(tipo, tipo === "personalizado" || tipo === "alteracao" ? cats : null);
@@ -272,13 +274,26 @@ export function gerarSnippet(cfg: BannerConfig): string {
     };
   }
   function mostrar() { if (!document.getElementById("rc-banner")) montar(); }
+  function launcher() {
+    if (document.getElementById("rc-launcher")) return;
+    var b = document.createElement("button"); b.id = "rc-launcher"; b.type = "button";
+    b.innerHTML = "\\ud83c\\udf6a Prefer\\u00eancias de cookies";
+    b.style.cssText = "position:fixed;left:14px;bottom:14px;z-index:99998;border:0;border-radius:999px;background:#13251e;color:#f2efe4;font:700 11.5px system-ui,-apple-system,sans-serif;padding:9px 14px;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,.32);border:1px solid rgba(201,233,79,.35);transition:background .15s ease";
+    b.onmouseover = function () { b.style.background = "#1d3a2f"; };
+    b.onmouseout = function () { b.style.background = "#13251e"; };
+    b.onclick = mostrar;
+    document.body.appendChild(b);
+  }
   var consent = ler(K_CONSENT);
   if (!consent) setTimeout(mostrar, Math.max(0, CFG.atraso));
+  else setTimeout(launcher, 400);
   window.RadarCookies = {
     getConsent: function () { return ler(K_CONSENT); },
     openPreferences: mostrar,
     reset: function () { try { localStorage.removeItem(K_CONSENT); } catch (e) {} mostrar(); }
   };
+  status(consent ? "\\u2713 motor do banner ativo \\u00b7 consentimento registrado" : "\\u2713 motor do banner ativo \\u00b7 aguardando consentimento");
+  } catch (err) { status("\\u2717 banner n\\u00e3o executou: " + (err && err.message ? err.message : "erro desconhecido")); }
 })();
 `;
 }
@@ -307,7 +322,8 @@ export function htmlSiteSimulado(cfg: BannerConfig): string {
     "<div class='card'><div class='img'></div><div><b>Mochila 24L</b><span>R$ 189,00</span></div></div>" +
     "<div class='card'><div class='img'></div><div><b>Garrafa Térmica</b><span>R$ 89,90</span></div></div>" +
     "</div>" +
-    "<div class='rod'>© 2026 " + cfg.siteNome + " — site de demonstração do Radar GRC</div>" +
+    "<div class='rod'>© 2026 " + cfg.siteNome + " — site de demonstração do Radar GRC · <a href='javascript:void(0)' onclick='window.RadarCookies&&window.RadarCookies.openPreferences()' style='color:#2e6b54;font-weight:700;text-decoration:underline'>Preferências de cookies</a></div>" +
+    "<div id='rc-status' style='position:fixed;top:8px;right:8px;z-index:99997;font:600 9.5px system-ui,sans-serif;background:#13251e;color:#c9e94f;border:1px solid rgba(201,233,79,.35);border-radius:999px;padding:4px 10px'>iniciando motor…</div>" +
     "<script>" + snippet + "</scr" + "ipt>" +
     "</body></html>"
   );

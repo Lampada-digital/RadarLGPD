@@ -219,8 +219,8 @@ export default function Cookies() {
                 <button onClick={() => setIframeKey((k) => k + 1)} className="rounded-md p-1.5 text-cream/60 transition hover:bg-pine-line hover:text-lime" title="Recarregar visitante" aria-label="Recarregar">
                   <Ic name="refresh" size={13} />
                 </button>
-                <button onClick={resetConsent} className="rounded-md p-1.5 text-cream/60 transition hover:bg-pine-line hover:text-lime" title="Apagar consentimento (banner reaparece)" aria-label="Resetar consentimento">
-                  <Ic name="trash" size={13} />
+                <button onClick={resetConsent} className="inline-flex items-center gap-1.5 rounded-md border border-lime/35 bg-lime/10 px-2.5 py-1 text-[10.5px] font-extrabold text-lime transition hover:bg-lime/20 active:scale-95" title="Apaga o consentimento salvo — o banner reaparece para o visitante">
+                  <Ic name="user" size={12} sw={2.2} /> Simular novo visitante
                 </button>
               </div>
             </div>
