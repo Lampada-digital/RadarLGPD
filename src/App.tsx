@@ -235,7 +235,7 @@ function Shell() {
       </button>
       <NavList />
       {usuario?.plano === "demo" && usuario.papel !== "admin" && (
-        <div className="mx-3 mb-4 rounded-lg border border-lime/30 bg-pine-deep/80 p-3.5">
+        <div className="mx-3 mb-3 rounded-lg border border-lime/30 bg-pine-deep/80 p-3.5">
           <p className="text-[9.5px] font-extrabold tracking-[0.16em] text-lime uppercase">Plano Demo</p>
           <p className="mt-1 text-[11px] leading-snug text-cream/60">5 atividades LGPD · 3 ROPA · 2 frameworks ISO</p>
           <button onClick={abrirUpgrade} className="mt-2.5 w-full rounded-md bg-lime px-3 py-1.5 text-[11.5px] font-extrabold text-pine transition hover:bg-lime-soft active:scale-[0.98]">
@@ -243,6 +243,12 @@ function Shell() {
           </button>
         </div>
       )}
+      <div className="mx-3 mb-4 flex items-center justify-between rounded-md border border-pine-line bg-pine-deep/60 px-3 py-2">
+        <span className="flex items-center gap-1.5 text-[9px] font-extrabold tracking-[0.14em] text-lime/80 uppercase">
+          <span className="pulse-dot size-1.5 rounded-full bg-lime" /> v2.1 · online
+        </span>
+        <span className="text-[9px] font-bold text-cream/35">11 frameworks · PDF</span>
+      </div>
     </>
   );
 
