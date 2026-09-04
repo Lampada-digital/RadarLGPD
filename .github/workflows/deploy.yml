@@ -1,6 +1,5 @@
-# Deploy automático no GitHub Pages a cada push na branch main.
-# O build usa --base=./ (caminhos relativos), então o mesmo artefato funciona
-# tanto em https://USUARIO.github.io quanto em https://USUARIO.github.io/REPO/.
+# Deploy automático no GitHub Pages a cada push (alternativa à Vercel).
+# Build com base relativo (--base=./) para funcionar em raiz e em subpasta.
 name: Deploy — GitHub Pages
 
 on:
@@ -21,28 +20,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Node 22
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
-      - name: Instalar dependências
-        run: npm ci
-
-      # --base=./ sobrescreve o base do Vite sem tocar no vite.config.js:
-      # gera referências relativas (./assets/...) que funcionam em qualquer subcaminho.
-      - name: Build (base relativo)
-        run: npm run build -- --base=./
-
-      - name: Configurar Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload do artefato
-        uses: actions/upload-pages-artifact@v3
+      - run: npm ci
+      - run: npm run build -- --base=./
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
@@ -53,6 +39,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Publicar
-        id: deployment
+      - id: deployment
         uses: actions/deploy-pages@v4
