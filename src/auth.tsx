@@ -227,18 +227,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /* seed da conta demo (admin da org de demonstração) + restauração de sessão */
   useEffect(() => {
     (async () => {
-      const lista = listarUsuarios();
-      const novos: Usuario[] = [];
-      if (!lista.some((u) => u.email === DEMO_EMAIL)) {
+      let lista = listarUsuarios();
+      let demo = lista.find((u) => u.email === DEMO_EMAIL);
+
+      if (!demo) {
+        /* cria a conta demo */
         const salt = uid();
-        novos.push(normalizar({
+        demo = normalizar({
           id: "demo-radar", orgId: "org-demo", nome: "Conta Demonstração", empresa: "Radar GRC", email: DEMO_EMAIL,
           cargo: "Encarregado(a) de dados (DPO)", porte: "11–50 colaboradores", jurisdicao: "Ambas (LGPD + GDPR)",
           salt, hash: await hashSenha(DEMO_SENHA, salt), papel: "admin", demo: true,
-        }));
+        });
+        lista = [...lista, demo];
+      } else {
+        /* resincroniza a conta demo (compatibilidade entre versões do hash) e garante admin + desbloqueada */
+        const salt = demo.salt || uid();
+        const hash = await hashSenha(DEMO_SENHA, salt);
+        if (hash !== demo.hash || demo.papel !== "admin" || demo.bloqueado || !demo.orgId) {
+          demo = { ...demo, salt, hash, papel: "admin", bloqueado: false, orgId: demo.orgId || "org-demo", demo: true };
+          lista = lista.map((x) => (x.id === demo!.id ? demo! : x));
+        }
       }
-      if (novos.length) gravarUsers([...lista, ...novos]);
-      const todas = novos.length ? listarUsuarios() : lista;
+      gravarUsers(lista);
+
+      /* limpa qualquer bloqueio anti força-bruta da conta demo */
+      const locks = lerLocks();
+      if (locks[DEMO_EMAIL]) {
+        delete locks[DEMO_EMAIL];
+        gravarLocks(locks);
+      }
+
+      const todas = lista;
       const s = lerSessao();
       if (s) {
         const u = todas.find((x) => x.id === s.userId);
