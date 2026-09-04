@@ -4,16 +4,12 @@ import { CATEGORIAS_DADOS, fmtData, TODAS_BASES, zonaRisco, ZONA_META } from "..
 import { BASES_ART6, DADOS_GDPR, TODAS_BASES_GDPR } from "../gdpr";
 import { FRAMEWORKS, progressoFramework } from "../frameworks";
 import { nivelMaturidade } from "../aiExtra";
+import { baixarBlob } from "../pdf";
 import { Cabecalho, Ic, Reveal } from "./ui";
 
 function baixar(nome: string, conteudo: string, tipo: string) {
   const blob = new Blob([conteudo], { type: tipo });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = nome;
-  a.click();
-  URL.revokeObjectURL(url);
+  baixarBlob(nome, blob);
 }
 
 const RISCO_GDPR = { 1: "Baixo", 2: "Médio", 3: "Alto" } as const;

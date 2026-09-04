@@ -16,18 +16,66 @@ O **Radar GRC** é uma plataforma de privacidade e compliance que unifica, em um
 
 - 🇧🇷 **LGPD** — registro de atividades de tratamento (art. 37), matriz de risco 5×5, bases legais (arts. 7º/11), fila de titulares (prazo de 15 dias) e checklist de conformidade;
 - 🇪🇺 **GDPR** — ROPA (Art. 30), bases de licitude (Art. 6/9/10), DPIA com os 9 critérios do EDPB (WP248) e gestão de transferências internacionais (Capítulo V);
-- 📋 **Frameworks ISO** — programas de implementação com controles reais, evidências, maturidade e **gerador de planos com IA** para as normas 27001, 27002, 27017, 27701, 31000, 37001 e 37301;
+- 📋 **Frameworks ISO** — programas de implementação com controles reais, evidências, maturidade e **gerador de planos com IA** para as normas 27001, 27002, 27017, **27701**, 31000, 37001 e 37301 — e **geração de políticas e documentos em PDF para download** (capa, sumário, 2 políticas por norma, anexo de evidências e bloco de aprovação; versão CONTROLADO com 60%+ de conformidade, RASCUNHO com marca d'água antes disso);
+- 🏅 **Certificações dedicadas** — áreas próprias para **SOC 2 Type II** (Trust Services Criteria) e **PCI-DSS v4.0** (12 requisitos), cada uma com trilha de certificação e pacote documental em PDF para o auditor;
+- 🤖 **Governança de IA** — área própria com ISO/IEC 42001 + EU AI Act (classificação de risco, supervisão humana, transparência) e políticas prontas em PDF;
+- 🍪 **Gestão de Cookies** — área própria com inventário, CMP, banner com paridade, bloqueio prévio e prova de consentimento (ePrivacy + GDPR);
 - 🤖 **Assistente de IA** — classificação de operações, recomendação de base legal, retenção, salvaguardas e risco — **heurística local, nenhum dado sai do navegador**;
-- 🔒 **Segurança** — senhas com hash SHA-256+salt, bloqueio anti força-bruta, trilha de auditoria e script de hardening do servidor para download.
+- 🛡️ **Painel administrativo** — todo cliente é admin da própria organização: cria usuários com senha temporária, bloqueia, redefine senhas, exclui contas e audita eventos;
+- 🔒 **Segurança** — acesso restrito a **e-mail corporativo**, senhas com hash SHA-256+salt, bloqueio anti força-bruta progressivo, expiração de sessão por inatividade, trilha de auditoria e script de hardening do servidor para download.
 
-## Acesso de demonstração
+## API do Banner de Cookies (mapeamento automático)
+
+O banner gerado para o site do cliente não é só um aviso: ele alimenta uma **API serverless**
+(`api/banner.ts`) que, a cada consentimento, **classifica os cookies com IA e devolve o mapeamento pronto**.
+
+- **POST `/api/banner`** — o banner envia o evento de consentimento + a lista de cookies do navegador
+  (com o header `X-Org-Key` identificando o cliente). A API classifica cada cookie (categoria, provedor,
+  duração, terceiros) e atualiza o inventário da organização.
+- **GET `/api/banner?org=<chave>`** — o painel Radar GRC busca o feed processado: eventos, inventário e
+  resumo de conformidade (taxa de aceite, terceiros, cookies acima do limite).
+- Na página **Gestão de Cookies → API do banner**, configure o endpoint e a chave do cliente, teste a
+  conexão e clique em **"Sincronizar & Mapear com IA"** para a IA importar tudo para o inventário e rodar
+  o diagnóstico automaticamente.
+
+> ⚠️ A API usa armazenamento em memória (demonstração). Para produção, persista em **Vercel KV** ou um
+> banco. Ela exige um host com **funções serverless** (Vercel) — no GitHub Pages, use a sincronização local.
+> O `vercel.json` já roteia `/api/:path*` para a função antes do fallback de SPA.
+
+## Modelo de negócio e acesso
+
+**Plano único Completo — R$ 149,00/mês — com free trial de 7 dias (sem cartão de crédito).**
+Ao fim do trial, o acesso é pausado até a ativação da assinatura (dados preservados).
+Todo cliente que se cadastra torna-se **administrador da própria organização** e recebe o
+painel administrativo completo para:
+
+- ➕ **Criar usuários** (operadores ou admins) com senha temporária compartilhável;
+- 🔒 **Bloquear / desbloquear** contas imediatamente;
+- 🗑️ **Excluir usuários** (com confirmação e trilha de auditoria);
+- 🔑 **Redefinir senhas** e auditar todos os eventos de segurança.
+
+### Acesso de demonstração
 
 | Campo  | Valor                  |
 | ------ | ---------------------- |
 | E-mail | `demo@radarlgpd.app`   |
 | Senha  | `demo1234`             |
 
-> Você também pode **criar sua própria conta** na tela inicial. Cada usuário tem dados isolados (persistência local).
+> Você também pode **criar sua própria conta** na tela inicial (torna-se admin da sua organização).
+> Cada organização tem dados isolados (persistência local) e todos os recursos liberados.
+
+## Proteção do sistema (anticópia)
+
+O Radar GRC embarca uma camada de dissuasão contra visualização, cópia e clonagem:
+
+- 🔒 **Atalhos bloqueados** — F12, Ctrl+Shift+I/J/C (DevTools), Ctrl+U (ver fonte), Ctrl+S (salvar página), Ctrl+P (imprimir) e Ctrl+A fora de campos;
+- 🖱️ **Botão direito e seleção de texto** desativados na interface (campos de formulário permanecem usáveis);
+- 💧 **Marca d'água de sessão** — o e-mail do usuário logado aparece sutilmente em todas as telas, tornando qualquer captura de tela compartilhada rastreável;
+- 👁️ **Detecção de DevTools** — indicador no topo muda para "MONITORANDO" e o evento vai para a trilha de auditoria;
+- 🧱 **Anti-embutimento** — CSP `frame-ancestors 'none'` + frame-busting impedem rodar o sistema dentro de outro site;
+- 📋 **Aviso de propriedade** no console e registro de cada tentativa bloqueada.
+
+> **Nota técnica honesta:** nenhuma aplicação web consegue impedir 100% a leitura do código pelo navegador — esta camada **desincentiva e audita** tentativas. A proteção efetiva do código-fonte é manter o **repositório privado** e publicar apenas o build (`dist`), nunca o `src`.
 
 ## Stack
 

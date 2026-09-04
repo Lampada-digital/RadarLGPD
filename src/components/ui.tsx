@@ -182,6 +182,23 @@ const PATHS: Record<string, ReactNode> = {
       <path d="m3.5 7.5 8.5 6 8.5-6" />
     </>
   ),
+  lock: (
+    <>
+      <rect x="5" y="10.5" width="14" height="9.5" rx="1.5" />
+      <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+      <circle cx="12" cy="15" r="1.2" fill="currentColor" stroke="none" />
+    </>
+  ),
+  key: (
+    <>
+      <circle cx="8" cy="14.5" r="3.5" />
+      <path d="m10.8 12 8.7-8.5" />
+      <path d="m16.5 6.5 2.5 2.5M14 9l2 2" />
+    </>
+  ),
+  star: (
+    <path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8L12 3.5Z" />
+  ),
 };
 
 export function Ic({ name, size = 18, className = "", sw = 1.8 }: { name: keyof typeof PATHS | string; size?: number; className?: string; sw?: number }) {

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../auth";
 import { useStore } from "../store";
 import { fmtData } from "../types";
+import { diasRestantesTrial } from "./Plans";
 import { Campo, Ic, inputCls, MedidorSenha, Modal } from "./ui";
 
 export default function AccountModal({ aberto, onFechar }: { aberto: boolean; onFechar: () => void }) {
@@ -89,6 +90,18 @@ export default function AccountModal({ aberto, onFechar }: { aberto: boolean; on
                 <Ic name="mail" size={14} className="text-ink-faint" />
                 <span className="truncate text-[13px] font-semibold text-ink-soft">{usuario.email}</span>
                 {usuario.demo && <span className="ml-auto rounded-sm bg-lime-soft px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide text-pine uppercase">Demo</span>}
+              </div>
+            </Campo>
+            <Campo label="Assinatura" hint="status do plano">
+              <div className="flex items-center gap-2.5 rounded-md border border-sand bg-paper px-3 py-2">
+                <Ic name="star" size={14} className={usuario.plano === "completo" ? "text-moss" : "text-amber"} />
+                <span className="text-[13px] font-semibold text-ink-soft">
+                  {usuario.demo
+                    ? "Demonstração — acesso permanente"
+                    : usuario.plano === "completo"
+                      ? "Plano Completo · R$ 149,00/mês"
+                      : `Free trial · ${diasRestantesTrial(usuario.trialAte)} dia(s) restante(s)`}
+                </span>
               </div>
             </Campo>
             <Campo label="Nome completo">

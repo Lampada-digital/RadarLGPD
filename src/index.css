@@ -195,8 +195,61 @@ body {
   animation: toast-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* ponto de dados viajando pela tubulação da API */
+@keyframes api-flow {
+  0% {
+    left: 0%;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% - 7px);
+    opacity: 0;
+  }
+}
+.api-dot {
+  position: absolute;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 999px;
+  background: var(--color-lime);
+  box-shadow: 0 0 10px 2px rgba(201, 233, 79, 0.65);
+  animation: api-flow 1.9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .api-dot {
+    animation: none;
+    display: none;
+  }
+}
+
 input[type="range"] {
   accent-color: var(--color-moss);
+}
+
+/* ---------- camada de proteção anticópia ---------- */
+.protegido {
+  user-select: none;
+  -webkit-user-select: none;
+}
+.protegido input,
+.protegido textarea,
+.protegido select,
+.protegido [contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+.protegido img,
+.protegido canvas {
+  -webkit-user-drag: none;
+  user-drag: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

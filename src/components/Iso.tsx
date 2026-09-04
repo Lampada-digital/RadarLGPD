@@ -4,31 +4,25 @@ import { ESTADOS_META, FRAMEWORKS, progressoFramework } from "../frameworks";
 import type { EstadoIso, Framework } from "../frameworks";
 import { nivelMaturidade, sugerirPlanoIso } from "../aiExtra";
 import type { PlanoIso } from "../aiExtra";
+import { gerarPacotePdf, PDF_ADEQUADO_MIN } from "../isoDocs";
+import { baixarBlob } from "../pdf";
+import { useAuth } from "../auth";
 import { Cabecalho, Campo, Ic, inputCls, Reveal, Ring } from "./ui";
 
 const ORDEM_ESTADOS: EstadoIso[] = ["nao", "andamento", "impl", "verif"];
 
 function baixarArquivo(nome: string, conteudo: string) {
   const blob = new Blob([conteudo], { type: "text/markdown;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = nome;
-  a.click();
-  URL.revokeObjectURL(url);
+  baixarBlob(nome, blob);
 }
 
-function Hub({ abrir }: { abrir: (id: string) => void }) {
+function Hub({ abrir, lista, kicker, titulo, desc }: { abrir: (id: string) => void; lista: Framework[]; kicker: string; titulo: string; desc: string }) {
   const { iso } = useStore();
   return (
     <div>
-      <Cabecalho
-        kicker="Governança · 7 frameworks"
-        titulo="Programas de implementação ISO"
-        desc="Acompanhe a implementação controle a controle — do SGSI (27001) ao compliance (37301) — e gere planos de ação com IA a partir dos gaps reais de cada norma."
-      />
+      <Cabecalho kicker={kicker} titulo={titulo} desc={desc} />
       <div className="grid gap-3.5 sm:grid-cols-2">
-        {FRAMEWORKS.map((fw, i) => {
+        {lista.map((fw, i) => {
           const p = progressoFramework(fw, iso);
           const nivel = nivelMaturidade(p.pct);
           return (
@@ -67,13 +61,43 @@ function Hub({ abrir }: { abrir: (id: string) => void }) {
   );
 }
 
-function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
+function Detalhe({ fw, voltar, unico }: { fw: Framework; voltar: () => void; unico?: boolean }) {
   const { iso, setIso, registrar, toast } = useStore();
+  const { usuario } = useAuth();
   const [plano, setPlano] = useState<PlanoIso | null>(null);
   const [gerando, setGerando] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
   const p = progressoFramework(fw, iso);
   const nivel = nivelMaturidade(p.pct);
   const mapa = iso[fw.id] ?? {};
+  const oficial = p.pct >= PDF_ADEQUADO_MIN;
+
+  const gerarPdf = () => {
+    setGerandoPdf(true);
+    setTimeout(() => {
+      try {
+        gerarPacotePdf({
+          fw,
+          mapa,
+          pct: p.pct,
+          empresa: usuario?.empresa || usuario?.nome || "Minha Organização",
+          responsavel: usuario?.nome ?? "Responsável pelo programa",
+        });
+        registrar("iso", `Pacote documental ${fw.codigo} gerado em PDF (${oficial ? "CONTROLADO" : "RASCUNHO"}).`);
+        toast(
+          oficial
+            ? `Download iniciado: políticas-${fw.id}-v1.pdf (CONTROLADO). Confira sua pasta de downloads.`
+            : `Download iniciado em modo RASCUNHO. Alcance ${PDF_ADEQUADO_MIN}% para a versão CONTROLADO.`,
+          oficial ? "ok" : "warn"
+        );
+      } catch (err) {
+        console.error("Falha ao gerar o pacote PDF:", err);
+        toast("Não foi possível gerar o PDF. Tente novamente — se persistir, recarregue a página.", "warn");
+      } finally {
+        setGerandoPdf(false);
+      }
+    }, 450);
+  };
 
   const grupos = useMemo(() => {
     const m = new Map<string, Framework["controles"]>();
@@ -107,9 +131,11 @@ function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
 
   return (
     <div>
-      <button onClick={voltar} className="group mb-4 inline-flex items-center gap-1.5 text-[12.5px] font-bold text-moss transition hover:text-pine">
-        <Ic name="arrow" size={13} className="rotate-180 transition-transform group-hover:-translate-x-0.5" /> Todos os frameworks
-      </button>
+      {!unico && (
+        <button onClick={voltar} className="group mb-4 inline-flex items-center gap-1.5 text-[12.5px] font-bold text-moss transition hover:text-pine">
+          <Ic name="arrow" size={13} className="rotate-180 transition-transform group-hover:-translate-x-0.5" /> Todos os frameworks
+        </button>
+      )}
 
       <Reveal>
         <div className="mb-5 overflow-hidden rounded-xl border border-sand bg-cream">
@@ -132,9 +158,13 @@ function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
                   <p className="font-display text-[26px] font-extrabold text-ink">{p.pct}%</p>
                 </div>
               </div>
-              <div className="max-w-[150px]">
+              <div className="max-w-[170px]">
                 <p className="text-[10px] font-bold tracking-[0.14em] text-ink-faint uppercase">Maturidade</p>
                 <p className="font-display mt-1 text-[14px] leading-tight font-bold" style={{ color: nivel.cor }}>{nivel.label}</p>
+                <p className={`mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[9.5px] font-extrabold tracking-wide uppercase ${oficial ? "bg-moss/12 text-moss" : "bg-amber-soft text-ink"}`}>
+                  <Ic name="doc" size={10} sw={2.4} />
+                  {oficial ? "Documentos oficiais liberados" : `PDF oficial a partir de ${PDF_ADEQUADO_MIN}%`}
+                </p>
               </div>
             </div>
           </div>
@@ -148,10 +178,88 @@ function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
                 <Ic name="download" size={14} /> Baixar plano (.md)
               </button>
             )}
+            <button
+              onClick={gerarPdf}
+              disabled={gerandoPdf}
+              title={oficial ? "Pacote CONTROLADO com políticas, sumário e anexo de evidências" : "Gera em modo RASCUNHO até atingir 60% de conformidade"}
+              className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-[12.5px] font-bold transition active:scale-[0.98] disabled:opacity-70 ${oficial ? "bg-moss text-cream hover:bg-pine" : "border border-amber/60 bg-amber-soft text-ink hover:bg-amber-soft/70"}`}
+            >
+              {gerandoPdf ? <span className="inline-block size-3.5 animate-spin rounded-full border-2 border-current/30 border-t-current" /> : <Ic name="printer" size={14} />}
+              {gerandoPdf ? "Montando PDF…" : oficial ? "Gerar políticas (PDF oficial)" : "Gerar políticas (rascunho)"}
+            </button>
             <span className="ml-auto text-[11px] text-ink-faint">Os estados alimentam o dashboard e os relatórios em tempo real.</span>
           </div>
         </div>
       </Reveal>
+
+      {unico && (
+        <Reveal delay={70}>
+          <div className="mb-5 grid gap-3.5 lg:grid-cols-[1fr_320px]">
+            {/* trilha de certificação */}
+            <div className="rounded-lg border border-sand bg-cream p-5">
+              <p className="text-[10px] font-extrabold tracking-[0.16em] text-ink-faint uppercase">Trilha de certificação</p>
+              <div className="mt-3.5 flex items-start">
+                {[
+                  { t: "Diagnóstico", d: "Gap analysis e escopo" },
+                  { t: "Implementação", d: "Controles e políticas" },
+                  { t: "Evidências", d: "Registros e notas" },
+                  { t: "Auditoria interna", d: "Verificação (9.2)" },
+                  { t: "Certificação", d: "Auditoria externa" },
+                ].map((s2, i2) => {
+                  const feito = i2 < (p.pct >= 100 ? 5 : p.pct >= 75 ? 4 : p.pct >= 45 ? 3 : p.pct >= 15 ? 2 : 1);
+                  const atual = i2 === (p.pct >= 100 ? 4 : p.pct >= 75 ? 3 : p.pct >= 45 ? 2 : p.pct >= 15 ? 1 : 0);
+                  return (
+                    <div key={s2.t} className="flex flex-1 flex-col items-center">
+                      <div className="flex w-full items-center">
+                        <span className={`h-0.5 flex-1 ${i2 === 0 ? "opacity-0" : feito || atual ? "" : "opacity-30"}`} style={{ background: feito || atual ? fw.cor : "var(--color-sand)" }} />
+                        <span
+                          className={`grid size-7 shrink-0 place-items-center rounded-full border-2 text-[11px] font-extrabold transition-all ${atual ? "scale-110 shadow-md" : ""}`}
+                          style={{
+                            borderColor: feito || atual ? fw.cor : "var(--color-sand)",
+                            background: feito ? fw.cor : "var(--color-cream)",
+                            color: feito ? "#faf8ee" : atual ? fw.cor : "var(--color-ink-faint)",
+                          }}
+                        >
+                          {feito ? "✓" : i2 + 1}
+                        </span>
+                        <span className={`h-0.5 flex-1 ${i2 === 4 ? "opacity-0" : feito ? "" : "opacity-30"}`} style={{ background: feito ? fw.cor : "var(--color-sand)" }} />
+                      </div>
+                      <p className={`mt-1.5 text-center text-[10.5px] leading-tight font-bold ${atual ? "text-ink" : "text-ink-faint"}`}>{s2.t}</p>
+                      <p className="hidden text-center text-[9px] text-ink-faint sm:block">{s2.d}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* pacote documental */}
+            <div className="rail-texture flex flex-col rounded-lg border border-pine-line bg-pine p-5 text-cream">
+              <p className="flex items-center gap-2 text-[10px] font-extrabold tracking-[0.16em] text-lime uppercase">
+                <Ic name="doc" size={12} sw={2.4} /> Pacote para auditoria
+              </p>
+              <p className="font-display mt-2 text-[15.5px] leading-snug font-extrabold">Documento completo para apresentar ao auditor</p>
+              <ul className="mt-2.5 space-y-1">
+                {["Capa controlada com classificação", "Sumário e 2 políticas redigidas", "Anexo A — situação de cada controle", "Bloco de aprovação e assinaturas"].map((it) => (
+                  <li key={it} className="flex items-start gap-2 text-[11px] leading-snug text-cream/70">
+                    <Ic name="check" size={11} className="mt-0.5 shrink-0 text-lime" sw={3} /> {it}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={gerarPdf}
+                disabled={gerandoPdf}
+                className="group mt-4 inline-flex items-center justify-center gap-2 rounded-md bg-lime px-4 py-2.5 text-[13px] font-extrabold text-pine transition hover:bg-lime-soft active:scale-[0.98] disabled:opacity-70"
+              >
+                {gerandoPdf ? <span className="inline-block size-4 animate-spin rounded-full border-2 border-pine/30 border-t-pine" /> : <Ic name="download" size={15} sw={2.4} />}
+                {gerandoPdf ? "Gerando e baixando…" : "Baixar PDF (.pdf)"}
+              </button>
+              <p className="mt-2 text-center text-[9.5px] text-cream/45">
+                {oficial ? "Versão CONTROLADO — pronta para o auditor" : `RASCUNHO com marca d'água até ${PDF_ADEQUADO_MIN}% de conformidade`}
+              </p>
+            </div>
+          </div>
+        </Reveal>
+      )}
 
       {plano && (
         <Reveal>
@@ -259,8 +367,28 @@ function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
   );
 }
 
-export default function Iso() {
+const TEXTO_HUB: Record<string, { kicker: string; titulo: string; desc: string }> = {
+  iso: {
+    kicker: "Governança · ISO",
+    titulo: "Programas de implementação ISO",
+    desc: "Acompanhe a implementação controle a controle — do SGSI (27001) ao compliance (37301) — e gere planos de ação com IA a partir dos gaps reais de cada norma.",
+  },
+  cert: {
+    kicker: "Certificações · SOC 2 & PCI-DSS",
+    titulo: "Certificações SOC 2 e PCI-DSS",
+    desc: "Prepare-se para o exame SOC 2 Type II e a conformidade PCI-DSS v4.0 com controles mapeados, evidências e geração de documentos para auditoria.",
+  },
+};
+
+export default function Iso({ ids, grupo }: { ids?: string[]; grupo?: string }) {
   const [sel, setSel] = useState<string | null>(null);
-  const fw = FRAMEWORKS.find((f) => f.id === sel);
-  return fw ? <Detalhe fw={fw} voltar={() => setSel(null)} /> : <Hub abrir={setSel} />;
+  const lista = ids ? FRAMEWORKS.filter((f) => ids.includes(f.id)) : FRAMEWORKS;
+  /* grupo de um único framework abre direto o detalhe */
+  if (ids?.length === 1) {
+    const fw = FRAMEWORKS.find((f) => f.id === ids[0]);
+    return fw ? <Detalhe fw={fw} voltar={() => undefined} unico /> : null;
+  }
+  const txt = TEXTO_HUB[grupo ?? "iso"];
+  const fw = lista.find((f) => f.id === sel);
+  return fw ? <Detalhe fw={fw} voltar={() => setSel(null)} /> : <Hub abrir={setSel} lista={lista} kicker={txt.kicker} titulo={txt.titulo} desc={txt.desc} />;
 }

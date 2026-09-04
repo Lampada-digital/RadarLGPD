@@ -1,6 +1,8 @@
 import { useStore } from "../store";
 import { useAuth } from "../auth";
 import { SCRIPT_HARDENING } from "../aiExtra";
+import { baixarBlob } from "../pdf";
+import { useProtecao } from "../protection";
 import { Cabecalho, Ic, Reveal } from "./ui";
 
 const POSTURA = [
@@ -9,9 +11,13 @@ const POSTURA = [
   { t: "Sessão isolada por usuário", d: "Cada conta possui storage próprio; dados não se misturam." },
   { t: "Trilha de auditoria (accountability)", d: "Login, edições, exclusões e exportações registrados por operação." },
   { t: "Política de senha mínima", d: "8+ caracteres com medidor de força no cadastro e na troca." },
+  { t: "Acesso restrito a e-mail corporativo", d: "Domínios pessoais e gratuitos (Gmail, Outlook, Yahoo…) bloqueados no cadastro e no login." },
   { t: "Proteção XSS nativa", d: "React escapa todo o conteúdo; nenhum HTML injetado (dangerouslySetInnerHTML)." },
   { t: "Minimização de dados", d: "Apenas o necessário é coletado — alinhado ao Art. 6º, III da LGPD e Art. 5(1)(c) GDPR." },
   { t: "Hardening de produção", d: "Script de segurança gerável (firewall, SSH, CSP, fail2ban, TLS)." },
+  { t: "Camada anticópia", d: "Atalhos de inspeção (F12, Ctrl+Shift+I), ver código-fonte, salvar, imprimir, botão direito e seleção bloqueados." },
+  { t: "Marca d'água de sessão", d: "Todas as telas carregam o e-mail do usuário — qualquer captura compartilhada é rastreável." },
+  { t: "Anti-embutimento (clickjacking)", d: "CSP frame-ancestors 'none' + frame-busting impedem o sistema dentro de iframes." },
 ];
 
 const COR_TIPO: Record<string, string> = {
@@ -25,17 +31,13 @@ const COR_TIPO: Record<string, string> = {
 
 function baixar(nome: string, conteudo: string, tipo: string) {
   const blob = new Blob([conteudo], { type: tipo });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = nome;
-  a.click();
-  URL.revokeObjectURL(url);
+  baixarBlob(nome, blob);
 }
 
 export default function Security() {
   const { auditoria, registrar, toast } = useStore();
   const { usuario } = useAuth();
+  const protecao = useProtecao();
 
   const exportarTrilha = () => {
     const cab = "Timestamp;Tipo;Detalhe";
@@ -60,6 +62,41 @@ export default function Security() {
         titulo="Central de segurança"
         desc="A postura de segurança do próprio sistema, a trilha de auditoria de todas as operações e o script de hardening para o ambiente de produção."
       />
+
+      {/* monitor ao vivo da proteção anticópia */}
+      <Reveal>
+        <div className="mb-3.5 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-lg border border-pine-line bg-pine px-5 py-4 text-cream">
+          <div className="flex items-center gap-3">
+            <span className={`relative grid size-10 place-items-center rounded-md border ${protecao.devtools ? "border-rust bg-rust/20 text-[#f0b39a]" : "border-lime/40 bg-pine-deep text-lime"}`}>
+              <Ic name={protecao.devtools ? "eye" : "shield"} size={19} sw={2} />
+              {!protecao.devtools && <span className="pulse-dot absolute -top-1 -right-1 size-2 rounded-full bg-lime" />}
+            </span>
+            <div>
+              <p className="font-display text-[15px] leading-tight font-extrabold">
+                {protecao.devtools ? "Inspeção detectada — monitoramento elevado" : "Proteção anticópia ativa"}
+              </p>
+              <p className="text-[11px] text-cream/55">
+                {protecao.devtools
+                  ? "As ações desta sessão estão sendo registradas na trilha de auditoria com prioridade."
+                  : "Sessão de " + (usuario?.email ?? "usuário") + " protegida contra cópia e clonagem."}
+              </p>
+            </div>
+          </div>
+          <div className="ml-auto flex flex-wrap gap-2.5">
+            {[
+              { l: "Tentativas bloqueadas", v: String(protecao.bloqueios) },
+              { l: "DevTools", v: protecao.devtools ? "Aberto" : "Fechado" },
+              { l: "Embutimento iframe", v: protecao.iframeDetectado ? "Bloqueado" : "Íntegro" },
+              { l: "Marca d'água", v: "Ativa" },
+            ].map((s) => (
+              <div key={s.l} className="rounded-md border border-pine-line bg-pine-deep/70 px-3 py-2 text-center">
+                <p className="font-display text-[15px] leading-none font-extrabold text-lime">{s.v}</p>
+                <p className="mt-1 text-[9px] font-bold tracking-[0.1em] text-cream/45 uppercase">{s.l}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Reveal>
 
       <div className="grid gap-3.5 lg:grid-cols-5">
         {/* postura */}
