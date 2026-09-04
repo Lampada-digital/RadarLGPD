@@ -6,6 +6,8 @@ import { SEED_GDPR_ATIVIDADES, SEED_TRANSFERENCIAS, SEED_DPIA } from "./gdpr";
 import type { GdprAtividade, Transferencia } from "./gdpr";
 import { SEED_ISO } from "./frameworks";
 import type { ControleEstado, EstadoIso } from "./frameworks";
+import { SEED_BANNER, SEED_COOKIES, SEED_EVENTOS } from "./cookies";
+import type { BannerConfig, CookieEvento, CookieItem } from "./cookies";
 
 export interface Toast {
   id: number;
@@ -44,6 +46,16 @@ interface Store {
   /* ISO */
   iso: Record<string, Record<string, ControleEstado>>;
   setIso: (frameworkId: string, controlId: string, patch: Partial<ControleEstado>) => void;
+  /* Cookies & consentimento */
+  bannerConfig: BannerConfig;
+  setBannerConfig: (patch: Partial<BannerConfig>) => void;
+  cookieEventos: CookieEvento[];
+  addCookieEventos: (evts: CookieEvento[]) => number;
+  limparCookieEventos: () => void;
+  inventarioCookies: CookieItem[];
+  addCookie: (c: CookieItem) => void;
+  addCookies: (cs: CookieItem[]) => void;
+  removeCookie: (id: string) => void;
   /* meta */
   toasts: Toast[];
   auditoria: EventoAuditoria[];
@@ -83,16 +95,19 @@ export function StoreProvider({ children, storageKey = "radar-lgpd-v1" }: { chil
   const [transferencias, setTransferencias] = useState<Transferencia[]>(() => load(storageKey, "transferencias", SEED_TRANSFERENCIAS));
   const [dpiaChecks, setDpiaChecks] = useState<Record<string, boolean>>(() => load(storageKey, "dpiaChecks", SEED_DPIA));
   const [iso, setIsoState] = useState<Record<string, Record<string, ControleEstado>>>(() => load(storageKey, "iso", SEED_ISO));
+  const [bannerConfig, setBannerConfigState] = useState<BannerConfig>(() => load(storageKey, "bannerConfig", SEED_BANNER));
+  const [cookieEventos, setCookieEventos] = useState<CookieEvento[]>(() => load(storageKey, "cookieEventos", SEED_EVENTOS));
+  const [inventarioCookies, setInventarioCookies] = useState<CookieItem[]>(() => load(storageKey, "inventarioCookies", SEED_COOKIES));
   const [auditoria, setAuditoria] = useState<EventoAuditoria[]>(() => load(storageKey, "auditoria", []));
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ atividades, solicitacoes, checklist, gdprAtividades, transferencias, dpiaChecks, iso, auditoria }));
+      localStorage.setItem(storageKey, JSON.stringify({ atividades, solicitacoes, checklist, gdprAtividades, transferencias, dpiaChecks, iso, bannerConfig, cookieEventos, inventarioCookies, auditoria }));
     } catch {
       /* armazenamento indisponível */
     }
-  }, [storageKey, atividades, solicitacoes, checklist, gdprAtividades, transferencias, dpiaChecks, iso, auditoria]);
+  }, [storageKey, atividades, solicitacoes, checklist, gdprAtividades, transferencias, dpiaChecks, iso, bannerConfig, cookieEventos, inventarioCookies, auditoria]);
 
   const registrar = (tipo: EventoAuditoria["tipo"], detalhe: string) =>
     setAuditoria((a) => [novoEvento(tipo, detalhe), ...a].slice(0, 200));
@@ -160,6 +175,33 @@ export function StoreProvider({ children, storageKey = "radar-lgpd-v1" }: { chil
     }));
   };
 
+  /* ---------- Cookies & consentimento ---------- */
+  const setBannerConfig = (patch: Partial<BannerConfig>) => setBannerConfigState((c) => ({ ...c, ...patch }));
+  const addCookieEventos = (evts: CookieEvento[]): number => {
+    let novos = 0;
+    setCookieEventos((l) => {
+      const ids = new Set(l.map((e) => e.id));
+      const add = evts.filter((e) => !ids.has(e.id));
+      novos = add.length;
+      return add.length ? [...add, ...l].slice(0, 400) : l;
+    });
+    return novos;
+  };
+  const limparCookieEventos = () => {
+    setCookieEventos([]);
+    registrar("sistema", "Eventos de consentimento de cookies limpos.");
+  };
+  const addCookie = (c: CookieItem) => {
+    setInventarioCookies((l) => (l.some((x) => x.nome === c.nome) ? l : [c, ...l]));
+  };
+  const addCookies = (cs: CookieItem[]) => {
+    setInventarioCookies((l) => {
+      const nomes = new Set(l.map((x) => x.nome));
+      return [...cs.filter((c) => !nomes.has(c.nome)), ...l];
+    });
+  };
+  const removeCookie = (id: string) => setInventarioCookies((l) => l.filter((x) => x.id !== id));
+
   /* ---------- maturidade LGPD ---------- */
   const { score, scoreFatores } = useMemo(() => {
     const total = atividades.length || 1;
@@ -190,6 +232,9 @@ export function StoreProvider({ children, storageKey = "radar-lgpd-v1" }: { chil
     setTransferencias(SEED_TRANSFERENCIAS);
     setDpiaChecks(SEED_DPIA);
     setIsoState(SEED_ISO);
+    setBannerConfigState(SEED_BANNER);
+    setCookieEventos(SEED_EVENTOS);
+    setInventarioCookies(SEED_COOKIES);
     registrar("sistema", "Dados de demonstração restaurados.");
   };
 
@@ -214,6 +259,15 @@ export function StoreProvider({ children, storageKey = "radar-lgpd-v1" }: { chil
     toggleDpia,
     iso,
     setIso,
+    bannerConfig,
+    setBannerConfig,
+    cookieEventos,
+    addCookieEventos,
+    limparCookieEventos,
+    inventarioCookies,
+    addCookie,
+    addCookies,
+    removeCookie,
     toasts,
     auditoria,
     registrar,

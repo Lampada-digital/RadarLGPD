@@ -14,6 +14,7 @@ import Requests from "./components/Requests";
 import Reference from "./components/Reference";
 import Gdpr from "./components/Gdpr";
 import Iso from "./components/Iso";
+import Cookies from "./components/Cookies";
 import Security from "./components/Security";
 import Reports from "./components/Reports";
 import AdminPanel from "./components/AdminPanel";
@@ -370,7 +371,7 @@ function Shell() {
             {pagina === "soc2" && <Iso ids={["soc2"]} />}
             {pagina === "pcidss" && <Iso ids={["pcidss"]} />}
             {pagina === "ai-gov" && <Iso ids={["ai-gov"]} />}
-            {pagina === "cookies" && <Iso ids={["cookies"]} />}
+            {pagina === "cookies" && <Cookies />}
             {pagina === "relatorios" && <Reports />}
             {pagina === "seguranca" && <Security />}
             {pagina === "admin" && ehAdmin && <AdminPanel />}
