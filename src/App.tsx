@@ -18,6 +18,7 @@ import Cookies from "./components/Cookies";
 import Security from "./components/Security";
 import Reports from "./components/Reports";
 import AdminPanel from "./components/AdminPanel";
+import Plans, { TrialGate, diasRestantesTrial } from "./components/Plans";
 import { iniciarProtecao, useProtecao } from "./protection";
 
 export type Page =
@@ -25,7 +26,7 @@ export type Page =
   | "lgpd-registro" | "lgpd-risco" | "lgpd-titulares" | "lgpd-bases"
   | "gdpr-ropa" | "gdpr-bases" | "gdpr-dpia"
   | "iso" | "soc2" | "pcidss" | "ai-gov" | "cookies"
-  | "relatorios" | "seguranca" | "admin";
+  | "relatorios" | "seguranca" | "planos" | "admin";
 
 const ISO_IDS = ["iso27001", "iso27002", "iso27017", "iso27701", "iso31000", "iso37001", "iso37301"];
 const CERT_IDS = ["soc2", "pcidss"];
@@ -78,6 +79,7 @@ const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; i
     itens: [
       { id: "relatorios", label: "Relatórios", icone: "printer" },
       { id: "seguranca", label: "Segurança", icone: "shield" },
+      { id: "planos", label: "Assinatura", icone: "star" },
     ],
   },
   {
@@ -104,6 +106,7 @@ const TITULOS: Record<Page, string> = {
   cookies: "Gestão de Cookies",
   relatorios: "Relatórios",
   seguranca: "Central de segurança",
+  planos: "Assinatura & plano",
   admin: "Painel administrativo",
 };
 
@@ -213,6 +216,15 @@ function Shell() {
     ? { txt: "ADMIN", cls: "bg-pine text-lime border-pine-line" }
     : { txt: "OPERADOR", cls: "bg-paper-deep text-ink-soft border-sand" };
 
+  const trialDias = diasRestantesTrial(usuario?.trialAte);
+  const planoChip = usuario?.demo
+    ? { txt: "DEMO", cls: "bg-paper-deep text-ink-soft border-sand" }
+    : usuario?.plano === "completo"
+      ? { txt: "COMPLETO", cls: "bg-moss/12 text-moss border-moss/40" }
+      : trialDias > 0
+        ? { txt: `TRIAL ${trialDias}D`, cls: "bg-amber-soft text-ink border-amber/60" }
+        : { txt: "ASSINAR", cls: "bg-rust-soft text-rust border-rust/50" };
+
   const NavList = () => (
     <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
       {NAV.filter((s) => !s.admin || ehAdmin).map((sec) => (
@@ -310,6 +322,12 @@ function Shell() {
                 className="w-full rounded-md border border-sand bg-cream py-2 pr-3 pl-8.5 text-[12.5px] text-ink transition outline-none placeholder:text-ink-faint focus:border-moss focus:ring-2 focus:ring-moss/25"
               />
             </div>
+
+            {/* chip da assinatura */}
+            <button onClick={() => irPara("planos")} className={`hidden items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10.5px] font-extrabold tracking-[0.12em] transition hover:opacity-85 sm:inline-flex ${planoChip.cls}`} title="Ver plano e assinatura">
+              <Ic name="star" size={11} sw={2.4} />
+              {planoChip.txt}
+            </button>
 
             {/* badge do papel */}
             <span className={`hidden items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10.5px] font-extrabold tracking-[0.12em] sm:inline-flex ${papelBadge.cls}`} title={ehAdmin ? "Administrador da organização" : "Operador"}>
@@ -415,6 +433,7 @@ function Shell() {
             {pagina === "cookies" && <Cookies />}
             {pagina === "relatorios" && <Reports />}
             {pagina === "seguranca" && <Security />}
+            {pagina === "planos" && <Plans />}
             {pagina === "admin" && ehAdmin && <AdminPanel />}
           </div>
         </main>
@@ -444,9 +463,12 @@ function Root() {
 
   if (!pronto) return <Splash />;
   if (!usuario) return <AuthScreen />;
+  /* trava comercial: free trial de 7 dias expirado e sem assinatura → tela de ativação */
+  const trialExpirado =
+    !usuario.demo && usuario.plano === "trial" && !!usuario.trialAte && new Date(usuario.trialAte).getTime() < Date.now();
   return (
     <StoreProvider key={usuario.id} storageKey={`radargrc:${usuario.id}`}>
-      <Shell />
+      {trialExpirado ? <TrialGate /> : <Shell />}
     </StoreProvider>
   );
 }

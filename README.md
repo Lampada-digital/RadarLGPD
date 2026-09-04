@@ -26,8 +26,10 @@ O **Radar GRC** é uma plataforma de privacidade e compliance que unifica, em um
 
 ## Modelo de negócio e acesso
 
-**Licença mensal fixa, sem planos ou limites de uso.** Todo cliente que se cadastra torna-se
-**administrador da própria organização** e recebe o painel administrativo completo para:
+**Plano único Completo — R$ 149,00/mês — com free trial de 7 dias (sem cartão de crédito).**
+Ao fim do trial, o acesso é pausado até a ativação da assinatura (dados preservados).
+Todo cliente que se cadastra torna-se **administrador da própria organização** e recebe o
+painel administrativo completo para:
 
 - ➕ **Criar usuários** (operadores ou admins) com senha temporária compartilhável;
 - 🔒 **Bloquear / desbloquear** contas imediatamente;

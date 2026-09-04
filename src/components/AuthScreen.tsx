@@ -323,10 +323,10 @@ function FormCadastro() {
         disabled={carregando}
         className="group flex w-full items-center justify-center gap-2 rounded-md bg-pine py-2.5 text-[13.5px] font-bold text-lime shadow-sm transition hover:bg-pine-deep active:scale-[0.99] disabled:opacity-70"
       >
-        {carregando ? (<><Spinner /> Criando conta…</>) : (<>Criar conta gratuita <Ic name="arrow" size={14} className="transition-transform group-hover:translate-x-0.5" /></>)}
+        {carregando ? (<><Spinner /> Criando conta…</>) : (<>Começar 7 dias grátis <Ic name="arrow" size={14} className="transition-transform group-hover:translate-x-0.5" /></>)}
       </button>
       <p className="text-center text-[10.5px] text-ink-faint">
-        Acesso completo liberado: você será o <strong className="text-ink-soft">administrador</strong> da sua organização e poderá convidar e gerenciar sua equipe no painel administrativo.
+        Comece com <strong className="text-ink-soft">7 dias grátis</strong> de acesso completo, sem cartão de crédito. Você será o <strong className="text-ink-soft">administrador</strong> da sua organização — depois, o plano Completo sai por {`R$ 149,00`}/mês.
       </p>
     </form>
   );
@@ -387,7 +387,7 @@ export default function AuthScreen() {
         </div>
 
         <div className="relative flex flex-wrap gap-x-6 gap-y-1.5 text-[10.5px] font-semibold tracking-wide text-cream/40">
-          <span>Art. 37 LGPD</span><span>Art. 30 GDPR</span><span>ISO 27001 · 27701 · 37301</span><span>DPIA · RIPD</span><span>PDF CONTROLADO</span>
+          <span>7 dias grátis</span><span>R$ 149,00/mês depois</span><span>Art. 37 LGPD · Art. 30 GDPR</span><span>11 frameworks</span><span>PDF CONTROLADO</span>
         </div>
       </div>
 

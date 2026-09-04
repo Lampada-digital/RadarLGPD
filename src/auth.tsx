@@ -7,13 +7,11 @@ import type { ReactNode } from "react";
    criar, bloquear e excluir usuários (operadores) do seu time.                      */
 
 export type Papel = "admin" | "operador";
-export type PlanoConta = "pro" | "enterprise";
+export type PlanoConta = "trial" | "completo";
 
-/* Chaves de acesso Enterprise emitidas pelo fornecedor (você).
-   Formato: RGRC-ENT-AAAA-CÓDIGO — qualquer código alfanumérico de 4+ caracteres ativa.
-   Em produção com backend, valide contra sua base de licenças. */
-export const CHAVE_ENT_REGEX = /^RGRC-ENT-\d{4}-[A-Z0-9]{4,}$/;
-export const CHAVE_ENT_DEMO = "RGRC-ENT-2026-DEMO";
+/* Modelo comercial: plano único "Completo" (R$ 149,00/mês) + free trial de 7 dias. */
+export const PRECO_MENSAL = "R$ 149,00";
+export const TRIAL_DIAS = 7;
 
 export type Usuario = {
   id: string;
@@ -32,6 +30,8 @@ export type Usuario = {
   ultimoAcesso?: string;
   papel: Papel;
   plano: PlanoConta;
+  trialAte?: string;      // fim do free trial de 7 dias (ISO)
+  planoAtivoEm?: string;  // data de ativação da assinatura Completa
   bloqueado?: boolean;
   demo?: boolean;
 };
@@ -119,7 +119,7 @@ function normalizar(u: Partial<Usuario> & { id: string; email: string }): Usuari
     criadoEm: new Date().toISOString(),
     orgId: `org-${u.id}`,          // migração: usuários antigos ganham a própria org
     papel: "operador",
-    plano: "pro",                  // todo cliente adquire a licença Profissional (preço fixo mensal)
+    plano: "completo",             // contas antigas (pré-modelo de assinatura) não são travadas
     ...u,
   } as Usuario;
 }
@@ -225,7 +225,7 @@ type AuthCtx = {
   sair: () => void;
   atualizarPerfil: (nome: string, empresa: string) => void;
   trocarSenha: (atual: string, nova: string) => Promise<string | null>;
-  ativarChave: (chave: string) => { ok: boolean; msg: string };
+  ativarPlano: () => void;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -246,15 +246,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         demo = normalizar({
           id: "demo-radar", orgId: "org-demo", nome: "Conta Demonstração", empresa: "Radar GRC", email: DEMO_EMAIL,
           cargo: "Encarregado(a) de dados (DPO)", porte: "11–50 colaboradores", jurisdicao: "Ambas (LGPD + GDPR)",
-          salt, hash: await hashSenha(DEMO_SENHA, salt), papel: "admin", demo: true,
+          salt, hash: await hashSenha(DEMO_SENHA, salt), papel: "admin", plano: "completo", demo: true,
         });
         lista = [...lista, demo];
       } else {
         /* resincroniza a conta demo (compatibilidade entre versões do hash) e garante admin + desbloqueada */
         const salt = demo.salt || uid();
         const hash = await hashSenha(DEMO_SENHA, salt);
-        if (hash !== demo.hash || demo.papel !== "admin" || demo.bloqueado || !demo.orgId) {
-          demo = { ...demo, salt, hash, papel: "admin", bloqueado: false, orgId: demo.orgId || "org-demo", demo: true };
+        if (hash !== demo.hash || demo.papel !== "admin" || demo.plano !== "completo" || demo.bloqueado || !demo.orgId) {
+          demo = { ...demo, salt, hash, papel: "admin", plano: "completo", bloqueado: false, orgId: demo.orgId || "org-demo", demo: true };
           lista = lista.map((x) => (x.id === demo!.id ? demo! : x));
         }
       }
@@ -343,6 +343,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       salt,
       hash: await hashSenha(d.senha, salt),
       papel: "admin", // quem adquire o sistema é o administrador
+      plano: "trial", // free trial de 7 dias com tudo liberado
+      trialAte: new Date(Date.now() + TRIAL_DIAS * 86400000).toISOString(),
     });
     gravarUsers([...lista, novo]);
     gravarSessao({ userId: novo.id, lembrar: true });
@@ -382,27 +384,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [usuario]
   );
 
-  /* ativação de licença Enterprise por chave */
-  const ativarChave = useCallback(
-    (chave: string) => {
-      const c = chave.trim().toUpperCase();
-      if (!c) return { ok: false, msg: "Digite a chave de acesso Enterprise." };
-      if (!CHAVE_ENT_REGEX.test(c))
-        return { ok: false, msg: "Chave inválida. Formato esperado: RGRC-ENT-AAAA-CÓDIGO (ex.: RGRC-ENT-2026-AB12)." };
-      if (!usuario) return { ok: false, msg: "Entre na sua conta para ativar a chave." };
-      if (usuario.plano === "enterprise") return { ok: false, msg: "Esta conta já possui acesso Enterprise ativo." };
-      const novo = { ...usuario, plano: "enterprise" as PlanoConta };
-      gravarUsers(listarUsuarios().map((x) => (x.id === usuario.id ? novo : x)));
-      setUsuario(novo);
-      registrarSeguranca("admin_acao", usuario.email, `Licença Enterprise ativada (chave ${c.slice(0, 13)}···).`);
-      return { ok: true, msg: "Acesso Enterprise ativado! SSO, white-label, SLA e DPO as a service liberados." };
-    },
-    [usuario]
-  );
+  /* ativação da assinatura Completa (R$ 149,00/mês) — encerra o trial e libera tudo */
+  const ativarPlano = useCallback(() => {
+    if (!usuario) return;
+    const novo = { ...usuario, plano: "completo" as PlanoConta, planoAtivoEm: new Date().toISOString(), trialAte: undefined };
+    gravarUsers(listarUsuarios().map((x) => (x.id === usuario.id ? novo : x)));
+    setUsuario(novo);
+    registrarSeguranca("admin_acao", usuario.email, `Assinatura Completa ativada (${PRECO_MENSAL}/mês).`);
+  }, [usuario]);
 
   const v = useMemo(
-    () => ({ usuario, pronto, entrar, cadastrar, sair, atualizarPerfil, trocarSenha, ativarChave }),
-    [usuario, pronto, entrar, cadastrar, sair, atualizarPerfil, trocarSenha, ativarChave]
+    () => ({ usuario, pronto, entrar, cadastrar, sair, atualizarPerfil, trocarSenha, ativarPlano }),
+    [usuario, pronto, entrar, cadastrar, sair, atualizarPerfil, trocarSenha, ativarPlano]
   );
 
   return <Ctx.Provider value={v}>{children}</Ctx.Provider>;
