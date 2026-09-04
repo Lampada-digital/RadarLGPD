@@ -57,10 +57,16 @@ O projeto já está pronto: há um `vercel.json` com rewrites de SPA e headers d
 
 ### Se aparecer `404: NOT_FOUND`
 
-1. **Raiz do repositório** — o `package.json` precisa estar na raiz do repositório, não dentro de uma subpasta. Se o código viver em uma subpasta, informe-a em *Project Settings → General → Root Directory*.
-2. **Configurações do projeto** — em *Project Settings → General*, confirme: Framework Preset = `Vite`, Build Command = `npm run build`, Output Directory = `dist`.
-3. **`vercel.json` na raiz** — ele define o rewrite de SPA (`/(.*)` → `/index.html`) e os headers de segurança; sem ele, rotas internas quebram.
-4. **Novo deploy sem cache** — *Deployments → ⋯ → Redeploy*, desmarcando "Use existing Build Cache".
+O `vercel.json` deste repositório já declara **framework, build e output explicitamente** (não depende das configurações do painel). Se o erro persistir, o problema quase nunca é o código — siga este checklist na ordem:
+
+1. **Aba Deployments** — existe algum deployment com status verde **Ready**?
+   - ❌ **Error** → clique nele e leia o build log; a causa aparece nas primeiras linhas vermelhas (geralmente dependências ou versão do Node). Em *Project Settings → General*, fixe **Node.js Version ≥ 18**.
+   - ⚠️ **Nenhum deployment** → o push não disparou build: confira se a branch que você enviou (`main` ou `master`) é a mesma configurada em *Settings → Git → Production Branch*.
+2. **Root Directory** (*Project Settings → General*) — deve estar **vazio**. O `package.json` precisa estar na raiz do repositório, não dentro de uma subpasta (erro comum ao fazer push de uma pasta zipada).
+3. **URL correta** — acesse a URL de produção `https://seu-projeto.vercel.app`, não a URL de um deployment específico que falhou.
+4. **Rebuild limpo** — *Deployments → ⋯ → Redeploy*, desmarcando *"Use existing Build Cache"*.
+
+> O `EU IA:gru1::…` no rodapé do erro é apenas a região do edge da Vercel (São Paulo) — é informação de diagnóstico, não a causa.
 
 ## Estrutura
 
