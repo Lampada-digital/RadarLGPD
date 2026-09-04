@@ -44,6 +44,20 @@ npm run dev        # abre em http://localhost:5173
 npm run build      # gera a pasta dist/
 ```
 
+## Publicando pela primeira vez
+
+Se você criou o repositório pelo site do GitHub (com README/LICENÇA/.gitignore iniciais),
+envie o projeto pelo próprio navegador — sem instalar nada:
+
+1. Na página do repositório: **Add file → Upload files**;
+2. Na pasta do projeto no seu computador, selecione **e envie**:
+   - Pastas: `src/`, `public/`, `.github/` (pasta oculta — no Windows ative *Exibir → Itens ocultos*; no Mac `Cmd+Shift+.`)
+   - Arquivos da raiz: `package.json`, `package-lock.json`, `index.html`, `tsconfig.json`, `vite.config.js`, `vercel.json`, `netlify.toml`, `.gitignore`, `LICENSE`, `README.md`
+3. ⚠️ **NÃO envie** `node_modules/` nem `dist/` (são gerados automaticamente);
+4. Role até o fim, escreva a mensagem do commit e clique em **Commit changes**.
+
+> O README/LICENÇA iniciais do GitHub serão sobrescritos pelos do projeto (licença MIT).
+
 ## Hospedar direto pelo GitHub (GitHub Pages)
 
 O repositório já vem com o workflow `.github/workflows/deploy.yml`: cada push na branch
