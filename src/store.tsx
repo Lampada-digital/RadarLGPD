@@ -27,11 +27,11 @@ interface Store {
 }
 
 const Ctx = createContext<Store | null>(null);
-const KEY = "radar-lgpd-v1";
+const KEY_PADRAO = "radar-lgpd-v1";
 
-function load<T>(campo: keyof typeof SEED, fallback: T): T {
+function load<T>(campo: keyof typeof SEED, fallback: T, key: string): T {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return fallback;
     const parsed = JSON.parse(raw);
     return (parsed[campo] as T) ?? fallback;
@@ -42,15 +42,15 @@ function load<T>(campo: keyof typeof SEED, fallback: T): T {
 
 const SEED = { atividades: SEED_ATIVIDADES, solicitacoes: SEED_SOLICITACOES, checklist: SEED_CHECKLIST };
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const [atividades, setAtividades] = useState<Atividade[]>(() => load("atividades", SEED.atividades));
-  const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>(() => load("solicitacoes", SEED.solicitacoes));
-  const [checklist, setChecklist] = useState<ItemChecklist[]>(() => load("checklist", SEED.checklist));
+export function StoreProvider({ children, storageKey = KEY_PADRAO }: { children: ReactNode; storageKey?: string }) {
+  const [atividades, setAtividades] = useState<Atividade[]>(() => load("atividades", SEED.atividades, storageKey));
+  const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>(() => load("solicitacoes", SEED.solicitacoes, storageKey));
+  const [checklist, setChecklist] = useState<ItemChecklist[]>(() => load("checklist", SEED.checklist, storageKey));
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(KEY, JSON.stringify({ atividades, solicitacoes, checklist }));
+      localStorage.setItem(storageKey, JSON.stringify({ atividades, solicitacoes, checklist }));
     } catch {
       /* armazenamento indisponível */
     }

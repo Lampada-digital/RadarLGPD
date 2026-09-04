@@ -155,6 +155,33 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M20 3.5V7h-3.5" />
     </>
   ),
+  eye: (
+    <>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="2.8" />
+    </>
+  ),
+  eyeOff: (
+    <>
+      <path d="M4.5 4.5 19.5 19.5" />
+      <path d="M9.9 5.9A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17.6 17.6 0 0 1-3.2 3.9M6.1 8A16.8 16.8 0 0 0 2.5 12S6 18.5 12 18.5c1.1 0 2.1-.2 3-.6" />
+      <path d="M9.9 9.9a2.8 2.8 0 0 0 4 4" />
+    </>
+  ),
+  chevronDown: <path d="m6 9 6 6 6-6" />,
+  logout: (
+    <>
+      <path d="M9.5 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20h4" />
+      <path d="m15 8 4 4-4 4" />
+      <path d="M19 12H9.5" />
+    </>
+  ),
+  mail: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3.5 7.5 8.5 6 8.5-6" />
+    </>
+  ),
 };
 
 export function Ic({ name, size = 18, className = "", sw = 1.8 }: { name: keyof typeof PATHS | string; size?: number; className?: string; sw?: number }) {
@@ -360,6 +387,41 @@ export function Cabecalho({ kicker, titulo, desc, acao }: { kicker: string; titu
         {desc && <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-ink-soft">{desc}</p>}
       </div>
       {acao}
+    </div>
+  );
+}
+
+/* ================= Força de senha ================= */
+
+export function calcularForca(s: string): { score: number; label: string; cor: string } {
+  let p = 0;
+  if (s.length >= 8) p++;
+  if (/[a-z]/.test(s) && /[A-Z]/.test(s)) p++;
+  if (/\d/.test(s)) p++;
+  if (/[^A-Za-z0-9]/.test(s)) p++;
+  const labels = ["Muito fraca", "Fraca", "Razoável", "Forte", "Excelente"];
+  const cores = ["var(--color-rust)", "var(--color-rust)", "var(--color-amber)", "var(--color-moss)", "var(--color-moss)"];
+  return { score: p, label: labels[p], cor: cores[p] };
+}
+
+export function MedidorSenha({ senha }: { senha: string }) {
+  const f = calcularForca(senha);
+  return (
+    <div className="mt-1.5">
+      <div className="flex gap-1">
+        {[0, 1, 2, 3].map((i) => (
+          <span
+            key={i}
+            className="h-1.5 flex-1 rounded-full bg-paper-deep transition-colors duration-300"
+            style={senha && i < f.score ? { background: f.cor } : undefined}
+          />
+        ))}
+      </div>
+      {senha && (
+        <p className="mt-1 text-[10.5px] font-bold tracking-wide uppercase" style={{ color: f.cor }}>
+          {f.label} · mínimo de 8 caracteres
+        </p>
+      )}
     </div>
   );
 }
