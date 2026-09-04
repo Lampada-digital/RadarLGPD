@@ -57,12 +57,17 @@ O projeto já está pronto: há um `vercel.json` com rewrites de SPA e headers d
 
 ### Se aparecer `404: NOT_FOUND`
 
-O `vercel.json` deste repositório já declara **framework, build e output explicitamente** (não depende das configurações do painel). Se o erro persistir, o problema quase nunca é o código — siga este checklist na ordem:
+O `vercel.json` é **mínimo de propósito** (só rewrite de SPA + headers de segurança) — a Vercel detecta o Vite sozinha pelo `package.json`, então há menos pontos de conflito com o painel. Se o erro persistir, o problema quase nunca é o código — siga este checklist na ordem:
 
 1. **Aba Deployments** — existe algum deployment com status verde **Ready**?
-   - ❌ **Error** → clique nele e leia o build log; a causa aparece nas primeiras linhas vermelhas (geralmente dependências ou versão do Node). Em *Project Settings → General*, fixe **Node.js Version ≥ 18**.
-   - ⚠️ **Nenhum deployment** → o push não disparou build: confira se a branch que você enviou (`main` ou `master`) é a mesma configurada em *Settings → Git → Production Branch*.
-2. **Root Directory** (*Project Settings → General*) — deve estar **vazio**. O `package.json` precisa estar na raiz do repositório, não dentro de uma subpasta (erro comum ao fazer push de uma pasta zipada).
+   - ❌ **Error** → clique nele e leia o build log; a causa aparece nas primeiras linhas vermelhas (geralmente dependências ou versão do Node). Em *Project Settings → General*, fixe **Node.js Version = 22.x**.
+   - ⚠️ **Nenhum deployment** → o push não disparou build: confira se a branch que você enviou (`main` ou `master`) é a mesma configurada em *Settings → Git → Production Branch*, e se o Vercel App tem acesso ao repositório (*GitHub → Settings → Applications → Vercel → Configure*).
+2. **Estrutura do repositório (causa nº 1)** — o `package.json` precisa estar na **raiz**. Valide com:
+   ```bash
+   git clone https://github.com/SEU-USUARIO/radar-grc.git && cd radar-grc
+   ls package.json index.html vercel.json src   # tudo precisa existir AQUI, sem subpasta
+   ```
+   Se o código vive numa subpasta, informe-a em *Project Settings → General → Root Directory* (senão, deixe **vazio**).
 3. **URL correta** — acesse a URL de produção `https://seu-projeto.vercel.app`, não a URL de um deployment específico que falhou.
 4. **Rebuild limpo** — *Deployments → ⋯ → Redeploy*, desmarcando *"Use existing Build Cache"*.
 
