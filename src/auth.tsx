@@ -7,6 +7,13 @@ import type { ReactNode } from "react";
    criar, bloquear e excluir usuários (operadores) do seu time.                      */
 
 export type Papel = "admin" | "operador";
+export type PlanoConta = "pro" | "enterprise";
+
+/* Chaves de acesso Enterprise emitidas pelo fornecedor (você).
+   Formato: RGRC-ENT-AAAA-CÓDIGO — qualquer código alfanumérico de 4+ caracteres ativa.
+   Em produção com backend, valide contra sua base de licenças. */
+export const CHAVE_ENT_REGEX = /^RGRC-ENT-\d{4}-[A-Z0-9]{4,}$/;
+export const CHAVE_ENT_DEMO = "RGRC-ENT-2026-DEMO";
 
 export type Usuario = {
   id: string;
@@ -24,6 +31,7 @@ export type Usuario = {
   criadoPor?: string;
   ultimoAcesso?: string;
   papel: Papel;
+  plano: PlanoConta;
   bloqueado?: boolean;
   demo?: boolean;
 };
@@ -111,6 +119,7 @@ function normalizar(u: Partial<Usuario> & { id: string; email: string }): Usuari
     criadoEm: new Date().toISOString(),
     orgId: `org-${u.id}`,          // migração: usuários antigos ganham a própria org
     papel: "operador",
+    plano: "pro",                  // todo cliente adquire a licença Profissional (preço fixo mensal)
     ...u,
   } as Usuario;
 }
@@ -216,6 +225,7 @@ type AuthCtx = {
   sair: () => void;
   atualizarPerfil: (nome: string, empresa: string) => void;
   trocarSenha: (atual: string, nova: string) => Promise<string | null>;
+  ativarChave: (chave: string) => { ok: boolean; msg: string };
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -372,9 +382,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [usuario]
   );
 
+  /* ativação de licença Enterprise por chave */
+  const ativarChave = useCallback(
+    (chave: string) => {
+      const c = chave.trim().toUpperCase();
+      if (!c) return { ok: false, msg: "Digite a chave de acesso Enterprise." };
+      if (!CHAVE_ENT_REGEX.test(c))
+        return { ok: false, msg: "Chave inválida. Formato esperado: RGRC-ENT-AAAA-CÓDIGO (ex.: RGRC-ENT-2026-AB12)." };
+      if (!usuario) return { ok: false, msg: "Entre na sua conta para ativar a chave." };
+      if (usuario.plano === "enterprise") return { ok: false, msg: "Esta conta já possui acesso Enterprise ativo." };
+      const novo = { ...usuario, plano: "enterprise" as PlanoConta };
+      gravarUsers(listarUsuarios().map((x) => (x.id === usuario.id ? novo : x)));
+      setUsuario(novo);
+      registrarSeguranca("admin_acao", usuario.email, `Licença Enterprise ativada (chave ${c.slice(0, 13)}···).`);
+      return { ok: true, msg: "Acesso Enterprise ativado! SSO, white-label, SLA e DPO as a service liberados." };
+    },
+    [usuario]
+  );
+
   const v = useMemo(
-    () => ({ usuario, pronto, entrar, cadastrar, sair, atualizarPerfil, trocarSenha }),
-    [usuario, pronto, entrar, cadastrar, sair, atualizarPerfil, trocarSenha]
+    () => ({ usuario, pronto, entrar, cadastrar, sair, atualizarPerfil, trocarSenha, ativarChave }),
+    [usuario, pronto, entrar, cadastrar, sair, atualizarPerfil, trocarSenha, ativarChave]
   );
 
   return <Ctx.Provider value={v}>{children}</Ctx.Provider>;
