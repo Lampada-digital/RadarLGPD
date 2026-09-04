@@ -24,6 +24,24 @@ O **Radar GRC** é uma plataforma de privacidade e compliance que unifica, em um
 - 🛡️ **Painel administrativo** — todo cliente é admin da própria organização: cria usuários com senha temporária, bloqueia, redefine senhas, exclui contas e audita eventos;
 - 🔒 **Segurança** — acesso restrito a **e-mail corporativo**, senhas com hash SHA-256+salt, bloqueio anti força-bruta progressivo, expiração de sessão por inatividade, trilha de auditoria e script de hardening do servidor para download.
 
+## API do Banner de Cookies (mapeamento automático)
+
+O banner gerado para o site do cliente não é só um aviso: ele alimenta uma **API serverless**
+(`api/banner.ts`) que, a cada consentimento, **classifica os cookies com IA e devolve o mapeamento pronto**.
+
+- **POST `/api/banner`** — o banner envia o evento de consentimento + a lista de cookies do navegador
+  (com o header `X-Org-Key` identificando o cliente). A API classifica cada cookie (categoria, provedor,
+  duração, terceiros) e atualiza o inventário da organização.
+- **GET `/api/banner?org=<chave>`** — o painel Radar GRC busca o feed processado: eventos, inventário e
+  resumo de conformidade (taxa de aceite, terceiros, cookies acima do limite).
+- Na página **Gestão de Cookies → API do banner**, configure o endpoint e a chave do cliente, teste a
+  conexão e clique em **"Sincronizar & Mapear com IA"** para a IA importar tudo para o inventário e rodar
+  o diagnóstico automaticamente.
+
+> ⚠️ A API usa armazenamento em memória (demonstração). Para produção, persista em **Vercel KV** ou um
+> banco. Ela exige um host com **funções serverless** (Vercel) — no GitHub Pages, use a sincronização local.
+> O `vercel.json` já roteia `/api/:path*` para a função antes do fallback de SPA.
+
 ## Modelo de negócio e acesso
 
 **Plano único Completo — R$ 149,00/mês — com free trial de 7 dias (sem cartão de crédito).**

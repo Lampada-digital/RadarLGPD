@@ -47,6 +47,8 @@ export interface BannerConfig {
   posicao: "inferior" | "superior";
   atrasoMs: number;
   categorias: CategoriaCookie[];
+  apiUrl: string;   // endpoint da API do banner (POST consentimento + inventário)
+  orgKey: string;   // chave da organização cliente usada para autenticar o envio
 }
 
 /* chaves compartilhadas entre banner ↔ painel (mesmo navegador) */
@@ -61,6 +63,8 @@ export const SEED_BANNER: BannerConfig = {
   posicao: "inferior",
   atrasoMs: 800,
   categorias: ["necessario", "funcional", "analitico", "publicidade"],
+  apiUrl: "/api/banner",
+  orgKey: "rgc_minhaloja_7f3a",
 };
 
 const atras = (min: number) => Date.now() - min * 60000;
@@ -206,14 +210,26 @@ export function gerarSnippet(cfg: BannerConfig): string {
   function status(t) { try { var s = document.getElementById("rc-status"); if (s) s.textContent = t; } catch (e) {} }
   try {
   if (window.RadarCookies) return;
-  var CFG = { site: "${cfg.siteNome}", cor: "${cfg.cor}", pos: "${cfg.posicao}", atraso: ${cfg.atrasoMs}, cats: [${cats}] };
+  var CFG = { site: "${cfg.siteNome}", cor: "${cfg.cor}", pos: "${cfg.posicao}", atraso: ${cfg.atrasoMs}, api: "${cfg.apiUrl || ""}", org: "${cfg.orgKey || ""}", cats: [${cats}] };
   var K_CONSENT = "${CHAVE_CONSENT}", K_EVENTS = "${CHAVE_EVENTOS}";
   function ler(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
   function gravar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function enviarApi(payload) {
+    if (!CFG.api) return;
+    try {
+      fetch(CFG.api, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Org-Key": CFG.org },
+        body: JSON.stringify(payload),
+        keepalive: true
+      }).catch(function () {});
+    } catch (e) {}
+  }
   function evento(tipo, cats) {
     var ev = { id: "ev-" + Date.now() + "-" + Math.floor(Math.random() * 1e5), ts: Date.now(), tipo: tipo, categorias: cats || null, origem: "site" };
     var l = ler(K_EVENTS) || []; l.push(ev); gravar(K_EVENTS, l.slice(-300));
     try { window.parent.postMessage({ radar: "cookie-event", evento: ev }, "*"); } catch (e) {}
+    enviarApi({ tipoMsg: "evento", org: CFG.org, site: CFG.site, evento: ev, cookies: document.cookie ? document.cookie.split("; ").map(function (c) { return c.split("=")[0]; }) : [] });
     return ev;
   }
   function css() {

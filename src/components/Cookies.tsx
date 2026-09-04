@@ -4,7 +4,9 @@ import {
   CATEGORIAS_COOKIE, CHAVE_CONSENT, CHAVE_EVENTOS,
   analisarCookies, classificarCookies, gerarMdPoliticaCookies, gerarPdfPoliticaCookies, gerarSnippet, htmlSiteSimulado,
 } from "../cookies";
-import type { CategoriaCookie, CookieItem, DiagnosticoCookies } from "../cookies";
+import type { CategoriaCookie, CookieEvento, CookieItem, DiagnosticoCookies } from "../cookies";
+import { buscarFeed, testarApi } from "../apiClient";
+import type { FeedApi } from "../apiClient";
 import { baixarBlob } from "../pdf";
 import { Cabecalho, Campo, ChipToggle, Ic, inputCls, Modal, Reveal, Ring } from "./ui";
 import Iso from "./Iso";
@@ -33,6 +35,51 @@ export default function Cookies() {
   const [isoAberto, setIsoAberto] = useState(false);
   const [novo, setNovo] = useState({ nome: "", provedor: "", duracao: "", categoria: "funcional" as CategoriaCookie, origem: "proprio" as "proprio" | "terceiro" });
   const vistosRef = useRef<Set<string>>(new Set(cookieEventos.map((e) => e.id)));
+
+  /* ---- API do banner ---- */
+  const [apiConn, setApiConn] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [testando, setTestando] = useState(false);
+  const [feed, setFeed] = useState<FeedApi | null>(null);
+  const [sincronizando, setSincronizando] = useState(false);
+
+  const testarConexao = async () => {
+    setTestando(true);
+    setApiConn(null);
+    const r = await testarApi(bannerConfig.apiUrl, bannerConfig.orgKey);
+    setApiConn(r);
+    setTestando(false);
+    if (r.ok) {
+      const f = await buscarFeed(bannerConfig.apiUrl, bannerConfig.orgKey);
+      if (f?.ok) setFeed(f);
+    }
+  };
+
+  /* a IA puxa o feed da API e faz o mapeamento completo automaticamente */
+  const sincronizarComIa = async () => {
+    setSincronizando(true);
+    const f = await buscarFeed(bannerConfig.apiUrl, bannerConfig.orgKey);
+    if (!f || !f.ok) {
+      toast("Não foi possível ler o feed da API. Teste a conexão e confira endpoint + chave.", "warn");
+      setSincronizando(false);
+      return;
+    }
+    setFeed(f);
+    const itens = classificarCookies(f.cookies.map((c) => c.nome));
+    addCookies(itens);
+    const evts: CookieEvento[] = f.eventos.map((e) => ({
+      id: e.id,
+      ts: e.ts,
+      tipo: e.tipo as CookieEvento["tipo"],
+      categorias: (e.categorias ?? null) as CategoriaCookie[] | null,
+      origem: "site" as const,
+    }));
+    const novos = addCookieEventos(evts);
+    const d = analisarCookies(inventarioCookies, cookieEventos);
+    setDiag(d);
+    registrar("sistema", `Mapeamento automático via API (${bannerConfig.orgKey}): ${itens.length} cookies classificados, ${novos} eventos novos importados.`);
+    toast(`IA concluiu o mapeamento: ${itens.length} cookies no inventário e ${novos} eventos sincronizados.`, "ia");
+    setSincronizando(false);
+  };
 
   /* ---- ingestão em tempo real: postMessage (iframe) + storage + polling ---- */
   useEffect(() => {
@@ -301,6 +348,19 @@ export default function Cookies() {
                 </select>
               </Campo>
             </div>
+            <div className="mt-3 rounded-md border border-pine-line/60 bg-pine/5 p-3">
+              <p className="mb-2 flex items-center gap-1.5 text-[10px] font-extrabold tracking-[0.14em] text-pine uppercase">
+                <Ic name="globe" size={11} sw={2.4} /> API do banner (envio automático para o Radar GRC)
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Campo label="Endpoint da API" hint="função serverless">
+                  <input className={inputCls} value={bannerConfig.apiUrl} onChange={(e) => setBannerConfig({ apiUrl: e.target.value })} placeholder="/api/banner" />
+                </Campo>
+                <Campo label="Chave da organização" hint="identifica o cliente">
+                  <input className={inputCls} value={bannerConfig.orgKey} onChange={(e) => setBannerConfig({ orgKey: e.target.value })} placeholder="rgc_cliente_xxxx" />
+                </Campo>
+              </div>
+            </div>
             <div className="mt-3">
               <Campo label="Cor de destaque">
                 <div className="flex items-center gap-2">
@@ -492,6 +552,112 @@ export default function Cookies() {
               </div>
             </div>
           )}
+        </div>
+      </Reveal>
+
+      {/* ===== API & Integração ===== */}
+      <Reveal delay={120}>
+        <div className="mt-3.5 overflow-hidden rounded-lg border border-pine-line bg-pine text-cream">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-pine-line px-5 py-4">
+            <div>
+              <h2 className="font-display flex items-center gap-2 text-[16px] font-bold">
+                <Ic name="globe" size={17} sw={2.2} className="text-lime" /> API do banner — mapeamento automático
+              </h2>
+              <p className="mt-0.5 text-[11.5px] text-cream/60">
+                O banner do cliente envia consentimento + cookies para <code className="rounded-sm bg-pine-deep px-1.5 py-px text-lime">{bannerConfig.apiUrl || "/api/banner"}</code> · chave <code className="rounded-sm bg-pine-deep px-1.5 py-px text-lime">{bannerConfig.orgKey || "—"}</code>. A IA classifica e mapeia sozinha.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {apiConn && (
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-extrabold uppercase ${apiConn.ok ? "bg-lime/15 text-lime" : "bg-rust/20 text-[#f0b39a]"}`}>
+                  <span className={`size-1.5 rounded-full ${apiConn.ok ? "bg-lime pulse-dot" : "bg-[#f0b39a]"}`} />
+                  {apiConn.ok ? "online" : "offline"}
+                </span>
+              )}
+              <button onClick={testarConexao} disabled={testando} className="inline-flex items-center gap-2 rounded-md border border-cream/25 px-3.5 py-2 text-[12px] font-bold text-cream transition hover:border-lime/60 hover:text-lime active:scale-[0.98] disabled:opacity-70">
+                {testando ? <span className="inline-block size-3.5 animate-spin rounded-full border-2 border-cream/30 border-t-cream" /> : <Ic name="refresh" size={13} />}
+                Testar conexão
+              </button>
+            </div>
+          </div>
+
+          {apiConn && !apiConn.ok && (
+            <p className="border-b border-pine-line bg-pine-deep/60 px-5 py-2.5 text-[11px] text-[#f0b39a]">{apiConn.msg}</p>
+          )}
+
+          {/* pipeline vivo: site → api → ia → mapeamento */}
+          <div className="grid gap-0 px-5 py-5 md:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] md:items-center">
+            {[
+              { ic: "globe", t: "Site do cliente", d: "banner instalado" },
+              { ic: "send", t: "API /api/banner", d: "POST eventos + cookies" },
+              { ic: "spark", t: "Motor de IA", d: "classifica & avalia" },
+              { ic: "layers", t: "Mapeamento GRC", d: "inventário + diagnóstico" },
+            ].map((n, i) => (
+              <div key={n.t} className="contents">
+                <div className="flex items-center gap-3 rounded-lg border border-pine-line bg-pine-deep/70 px-3.5 py-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-md bg-lime/15 text-lime"><Ic name={n.ic} size={17} sw={2.1} /></span>
+                  <span>
+                    <span className="block text-[12.5px] leading-tight font-bold">{n.t}</span>
+                    <span className="block text-[10px] text-cream/50">{n.d}</span>
+                  </span>
+                </div>
+                {i < 3 && (
+                  <div className="relative hidden h-0.5 w-full min-w-[28px] overflow-hidden rounded-full bg-pine-line md:block">
+                    <span className="api-dot" style={{ animationDelay: `${i * 0.55}s` }} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* métricas do feed + sincronização */}
+          <div className="grid gap-4 border-t border-pine-line px-5 py-5 lg:grid-cols-[1fr_300px]">
+            <div>
+              <p className="mb-2 text-[10px] font-extrabold tracking-[0.16em] text-cream/50 uppercase">Feed recebido pela API{feed ? ` · ${feed.resumo.totalEventos} eventos · ${feed.resumo.totalCookies} cookies` : ""}</p>
+              {feed ? (
+                <>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {[
+                      { l: "Eventos", v: String(feed.resumo.totalEventos) },
+                      { l: "Cookies mapeados", v: String(feed.resumo.totalCookies) },
+                      { l: "Taxa de aceite", v: `${feed.resumo.taxaAceite}%` },
+                      { l: "Status", v: feed.resumo.conformidade },
+                    ].map((s) => (
+                      <div key={s.l} className="rounded-md border border-pine-line bg-pine-deep/70 px-3 py-2.5">
+                        <p className="font-display text-[19px] leading-none font-extrabold text-lime">{s.v}</p>
+                        <p className="mt-1 text-[9px] font-bold tracking-[0.1em] text-cream/45 uppercase">{s.l}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <ul className="mt-3 max-h-[150px] space-y-1 overflow-y-auto pr-1">
+                    {feed.eventos.slice(-8).reverse().map((e) => (
+                      <li key={e.id} className="flex items-center justify-between gap-2 rounded-md bg-pine-deep/50 px-2.5 py-1.5 text-[11px]">
+                        <span className="font-bold text-lime">{e.tipo.replace("_", " ")}</span>
+                        <span className="text-cream/50">{e.site} · {new Date(e.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+                      </li>
+                    ))}
+                    {feed.eventos.length === 0 && <li className="rounded-md bg-pine-deep/50 px-2.5 py-3 text-center text-[11px] text-cream/45">Aguardando o primeiro envio do site…</li>}
+                  </ul>
+                </>
+              ) : (
+                <p className="rounded-md border border-dashed border-pine-line px-4 py-6 text-center text-[11.5px] text-cream/45">
+                  Teste a conexão para carregar o feed processado pela IA.
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col justify-between rounded-lg border border-lime/30 bg-pine-deep/80 p-4">
+              <div>
+                <p className="text-[10px] font-extrabold tracking-[0.16em] text-lime uppercase">Automação</p>
+                <p className="mt-1.5 text-[11.5px] leading-snug text-cream/70">
+                  Ao sincronizar, a IA classifica todos os cookies recebidos, alimenta o inventário, importa os eventos e roda o diagnóstico de conformidade — sem ação manual.
+                </p>
+              </div>
+              <button onClick={sincronizarComIa} disabled={sincronizando} className="mt-3 inline-flex items-center justify-center gap-2 rounded-md bg-lime px-4 py-2.5 text-[12.5px] font-extrabold text-pine transition hover:bg-lime-soft active:scale-[0.98] disabled:opacity-70">
+                {sincronizando ? <span className="inline-block size-3.5 animate-spin rounded-full border-2 border-pine/30 border-t-pine" /> : <Ic name="wand" size={14} sw={2.2} />}
+                {sincronizando ? "Mapeando com IA…" : "Sincronizar & Mapear com IA"}
+              </button>
+            </div>
+          </div>
         </div>
       </Reveal>
 
