@@ -29,7 +29,7 @@ export type Page =
   | "iso" | "soc2" | "pcidss" | "ai-gov" | "cookies"
   | "relatorios" | "seguranca" | "planos" | "admin";
 
-const ISO_IDS = ["iso27001", "iso27002", "iso27017", "iso27701", "iso31000", "iso37001", "iso37301"];
+const ISO_IDS = ["iso27001", "iso27002", "iso27017", "iso27701", "iso22301", "iso31000", "iso37001", "iso37301"];
 const CERT_IDS = ["soc2", "pcidss"];
 
 const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; icone: string; badge?: "ia" | "abertas" }[] }[] = [
@@ -276,9 +276,9 @@ function Shell() {
       )}
       <div className="mx-3 mb-4 flex items-center justify-between rounded-md border border-pine-line bg-pine-deep/60 px-3 py-2">
         <span className="flex items-center gap-1.5 text-[9px] font-extrabold tracking-[0.14em] text-lime/80 uppercase">
-          <span className="pulse-dot size-1.5 rounded-full bg-lime" /> v2.2 · online
+          <span className="pulse-dot size-1.5 rounded-full bg-lime" /> v2.3 · online
         </span>
-        <span className="text-[9px] font-bold text-cream/35">11 frameworks · PDF</span>
+        <span className="text-[9px] font-bold text-cream/35">12 frameworks · PDF</span>
       </div>
     </>
   );

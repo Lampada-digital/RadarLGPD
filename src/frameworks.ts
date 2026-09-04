@@ -26,10 +26,27 @@ export const ESTADOS_META: Record<EstadoIso, { label: string; fg: string; bg: st
   verif: { label: "Verificado", fg: "#faf8ee", bg: "#132e26" },
 };
 
+export interface Anexo {
+  id: string;
+  nome: string;
+  tipo: "img" | "doc";
+  ext: string;
+  tamanho: number;
+  dataUrl?: string; // imagens (comprimidas) e documentos pequenos
+  ts: string;
+}
+
 export interface ControleEstado {
   estado: EstadoIso;
   nota?: string;
+  anexos?: Anexo[];
   ts?: string;
+}
+
+export function fmtTamanho(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
 export const progressoFramework = (fw: Framework, iso: Record<string, Record<string, ControleEstado>>) => {
@@ -260,6 +277,32 @@ export const FRAMEWORKS: Framework[] = [
       c("ck-12", "AUD", "Auditoria de conformidade", "Auditoria periódica de cookies e conformidade ePrivacy/GDPR.", "Operação"),
     ],
   },
+  {
+    id: "iso22301", codigo: "ISO 22301:2019", titulo: "Gestão de Continuidade de Negócios (BCM)",
+    objetivo: "Estabelecer um Sistema de Gestão de Continuidade de Negócios: BIA, estratégias, planos, exercícios e melhoria contínua.", cor: "#0e7490",
+    controles: [
+      c("22301-41", "4.1", "Contexto da organização", "Questões externas e internas relevantes à continuidade determinadas.", "Contexto"),
+      c("22301-42", "4.2", "Partes interessadas", "Requisitos das partes interessadas para continuidade identificados.", "Contexto"),
+      c("22301-43", "4.3", "Escopo do SGCN", "Escopo do sistema de gestão de continuidade documentado.", "Contexto"),
+      c("22301-51", "5.1", "Liderança e comprometimento", "Alta direção demonstra liderança quanto à continuidade.", "Liderança"),
+      c("22301-52", "5.2", "Política de continuidade", "Política de continuidade aprovada, comunicada e disponível.", "Liderança"),
+      c("22301-53", "5.3", "Papéis e responsabilidades", "Responsabilidades de continuidade atribuídas e comunicadas.", "Liderança"),
+      c("22301-61", "6.1", "Riscos e oportunidades", "Riscos e oportunidades ao SGCN avaliados e tratados.", "Planejamento"),
+      c("22301-62", "6.2", "Objetivos de continuidade", "Objetivos mensuráveis, monitorados e comunicados.", "Planejamento"),
+      c("22301-72", "7.2", "Competência", "Competências necessárias determinadas e evidenciadas.", "Apoio"),
+      c("22301-73", "7.3", "Conscientização", "Conscientização sobre política, impactos e papel na continuidade.", "Apoio"),
+      c("22301-75", "7.5", "Informação documentada", "Documentos e registros controlados e protegidos.", "Apoio"),
+      c("22301-82", "8.2", "BIA — Análise de impacto nos negócios", "BIA com atividades prioritárias, RTO/RPO e impactos definidos.", "Operação"),
+      c("22301-83", "8.3", "Avaliação de riscos de descontinuidade", "Riscos que ameaçam as atividades priorizadas avaliados.", "Operação"),
+      c("22301-84", "8.4", "Estratégias e soluções de continuidade", "Estratégias selecionadas dentro dos objetivos de recuperação.", "Operação"),
+      c("22301-85", "8.5", "Planos e procedimentos de continuidade", "Planos com equipes, procedimentos de resposta, alerta e recuperação.", "Operação"),
+      c("22301-86", "8.6", "Programa de exercícios e testes", "Exercícios periódicos validando planos, com lições aprendidas.", "Validação"),
+      c("22301-91", "9.1", "Monitoramento e medição", "Desempenho do SGCN monitorado com indicadores.", "Avaliação"),
+      c("22301-92", "9.2", "Auditoria interna", "Programa de auditoria interna do SGCN.", "Avaliação"),
+      c("22301-93", "9.3", "Análise crítica pela direção", "Revisão periódica da adequação e eficácia do SGCN.", "Avaliação"),
+      c("22301-101", "10.1", "Melhoria contínua", "Não conformidades tratadas; ações corretivas eficazes.", "Melhoria"),
+    ],
+  },
 ];
 
 /* Estado inicial de demonstração (dados de exemplo) */
@@ -310,6 +353,13 @@ export const SEED_ISO: Record<string, Record<string, ControleEstado>> = {
     "ai-61": { estado: "andamento", ts: "2025-12-03" },
     "eu-1": { estado: "impl", nota: "Matriz de classificação de risco", ts: "2025-11-15" },
     "eu-3": { estado: "andamento", ts: "2025-12-04" },
+  },
+  iso22301: {
+    "22301-41": { estado: "impl", ts: "2025-09-05" },
+    "22301-52": { estado: "impl", nota: "Política BCM v2 aprovada", ts: "2025-09-20" },
+    "22301-82": { estado: "andamento", nota: "BIA das 8 áreas críticas em curso", ts: "2025-12-01" },
+    "22301-85": { estado: "andamento", ts: "2025-12-03" },
+    "22301-86": { estado: "nao", ts: "2025-12-03" },
   },
   cookies: {
     "ck-1": { estado: "verif", nota: "62 cookies inventariados", ts: "2025-10-12" },

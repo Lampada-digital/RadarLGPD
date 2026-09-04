@@ -12,7 +12,7 @@ export function diasRestantesTrial(trialAte?: string): number {
 const INCLUSO = [
   { ic: "layers", t: "LGPD completo", d: "Registro art. 37, matriz 5×5, bases legais e fila de titulares (15 dias)." },
   { ic: "globe", t: "GDPR completo", d: "ROPA Art. 30, bases Art. 6/9, DPIA (WP248) e transferências do Capítulo V." },
-  { ic: "brain", t: "11 frameworks & certificações", d: "ISO 27001, 27002, 27017, 27701, 31000, 37001, 37301, SOC 2, PCI-DSS, IA e Cookies." },
+  { ic: "brain", t: "12 frameworks & certificações", d: "ISO 27001, 27002, 27017, 27701, 22301, 31000, 37001, 37301, SOC 2, PCI-DSS, IA e Cookies." },
   { ic: "spark", t: "Assistente de IA ilimitado", d: "Classificação de operações, planos de implementação e diagnósticos — 100% no navegador." },
   { ic: "printer", t: "Documentos e políticas em PDF", d: "Pacotes CONTROLADOS prontos para auditoria e certificação, sem limite de geração." },
   { ic: "user", t: "Usuários ilimitados", d: "Painel administrativo para criar, bloquear e excluir a equipe da organização." },
@@ -67,7 +67,7 @@ export default function Plans() {
       <Cabecalho
         kicker="Assinatura · licença única"
         titulo="Plano Completo"
-        desc="Um único plano com absolutamente tudo — LGPD, GDPR, 11 frameworks, IA, documentos e equipe ilimitada. Comece com 7 dias grátis, sem cartão."
+        desc="Um único plano com absolutamente tudo — LGPD, GDPR, 12 frameworks, IA, documentos e equipe ilimitada. Comece com 7 dias grátis, sem cartão."
       />
 
       {/* card principal de preço */}
@@ -233,7 +233,7 @@ export function TrialGate() {
             Todos os mapeamentos, evidências, políticas e registros criados nos seus {TRIAL_DIAS} dias de trial continuam guardados. Ative a assinatura para retomar exatamente de onde parou.
           </p>
         </div>
-        <p className="text-[10.5px] font-semibold tracking-wide text-cream/40 uppercase">LGPD · GDPR · 11 frameworks · IA</p>
+        <p className="text-[10.5px] font-semibold tracking-wide text-cream/40 uppercase">LGPD · GDPR · 12 frameworks · IA</p>
       </div>
 
       <div className="flex items-center justify-center bg-paper p-6 sm:p-10">
@@ -253,7 +253,7 @@ export function TrialGate() {
               <span className="rounded-full bg-pine-deep px-2.5 py-1 text-[9.5px] font-extrabold tracking-widest text-lime uppercase">Tudo incluído</span>
             </div>
             <ul className="mt-4 space-y-1.5">
-              {["LGPD + GDPR + 11 frameworks", "IA, PDFs e exportações ilimitados", "Usuários e painel administrativo", "Cancele quando quiser"].map((b) => (
+              {["LGPD + GDPR + 12 frameworks", "IA, PDFs e exportações ilimitados", "Usuários e painel administrativo", "Cancele quando quiser"].map((b) => (
                 <li key={b} className="flex items-center gap-2 text-[12px] text-cream/85">
                   <span className="grid size-4 shrink-0 place-items-center rounded-full bg-lime/20 text-lime"><Ic name="check" size={9} sw={3.2} /></span>
                   {b}

@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useStore } from "../store";
 import { AREAS, BASES_ART7, BASES_ART11, CATEGORIAS_DADOS, MEDIDAS, SUJEITOS, TODAS_BASES, fmtData, uid, ZONA_META, zonaRisco } from "../types";
 import type { Atividade } from "../types";
 import { analisar } from "../ai";
+import { baixarModelo, importarLgpd, MODELO_LGPD, parseCsv } from "../importCsv";
 import { Cabecalho, Campo, ChipToggle, Ic, inputCls, Modal, Reveal } from "./ui";
 
 const VAZIA: Atividade = {
@@ -24,7 +25,8 @@ function RiscoChip({ p, i }: { p: number; i: number }) {
 }
 
 export default function Activities({ buscaInicial = "" }: { buscaInicial?: string }) {
-  const { atividades, addAtividade, updateAtividade, removeAtividade, toast } = useStore();
+  const { atividades, addAtividade, updateAtividade, removeAtividade, toast, registrar } = useStore();
+  const importRef = useRef<HTMLInputElement>(null);
   const [busca, setBusca] = useState(buscaInicial);
   const [fArea, setFArea] = useState("");
   const [fZona, setFZona] = useState("");
@@ -54,14 +56,46 @@ export default function Activities({ buscaInicial = "" }: { buscaInicial?: strin
       toast("Preencha ao menos o nome e a finalidade da atividade.", "warn");
       return;
     }
+    const score = form.probabilidade * form.impacto;
+    const zona = ZONA_META[zonaRisco(score)];
     if (editando) {
       updateAtividade(form);
-      toast("Registro de tratamento atualizado.");
+      toast(`Registro atualizado — matriz de risco recalculada: "${form.nome}" em zona ${zona.label} (score ${score}).`);
     } else {
       addAtividade({ ...form, origem: "manual" });
-      toast("Atividade mapeada no registro (art. 37).");
+      registrar("lgpd", `Atividade "${form.nome}" mapeada; matriz recalculada em zona ${zona.label} (${score}).`);
+      toast(`Mapeada! A matriz de risco foi recalculada automaticamente: zona ${zona.label} (P${form.probabilidade} × I${form.impacto} = ${score}).`);
     }
     setForm(null);
+  };
+
+  /* ---------- importação de planilha → alimenta o mapeamento e a matriz ---------- */
+  const importarArquivo = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const texto = await file.text();
+      const linhas = parseCsv(texto);
+      const { itens, erros } = importarLgpd(linhas);
+      itens.forEach((a) => addAtividade(a));
+      if (itens.length) {
+        const zonas = new Map<keyof typeof ZONA_META, number>();
+        itens.forEach((a) => {
+          const z = zonaRisco(a.probabilidade * a.impacto);
+          zonas.set(z, (zonas.get(z) ?? 0) + 1);
+        });
+        const resumoZonas = [...zonas.entries()].map(([z, n]) => `${n} ${ZONA_META[z].label.toLowerCase()}`).join(" · ");
+        registrar("sistema", `Importação de planilha: ${itens.length} atividade(s) LGPD adicionada(s) de "${file.name}".`);
+        toast(`Importadas ${itens.length} atividade(s) — a matriz de risco foi recalculada automaticamente (${resumoZonas}).`);
+      } else {
+        toast("Nenhuma linha válida encontrada na planilha.", "warn");
+      }
+      erros.slice(0, 3).forEach((e) => toast(e, "warn"));
+      if (erros.length > 3) toast(`…e mais ${erros.length - 3} aviso(s) de importação.`, "warn");
+    } catch {
+      toast("Não foi possível ler o arquivo. Use CSV exportado do Excel/Google Sheets.", "warn");
+    } finally {
+      if (importRef.current) importRef.current.value = "";
+    }
   };
 
   const autoIA = () => {
@@ -98,9 +132,18 @@ export default function Activities({ buscaInicial = "" }: { buscaInicial?: strin
         titulo="Atividades de tratamento"
         desc="Inventário completo das operações com dados pessoais: finalidade, base legal, categorias de dados, retenção, compartilhamento e risco."
         acao={
-          <button onClick={abrirNova} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2.5 text-[13px] font-bold text-lime shadow-sm transition hover:bg-pine-deep active:scale-[0.98]">
-            <Ic name="plus" size={14} sw={2.6} /> Nova atividade
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => importRef.current?.click()} className="inline-flex items-center gap-2 rounded-md border border-sand bg-cream px-3.5 py-2.5 text-[12.5px] font-bold text-ink-soft shadow-sm transition hover:border-moss hover:text-moss active:scale-[0.98]">
+              <Ic name="download" size={14} className="rotate-180" /> Importar planilha
+            </button>
+            <button onClick={() => baixarModelo("modelo-mapeamento-lgpd.csv", MODELO_LGPD)} className="inline-flex items-center gap-2 rounded-md border border-sand bg-cream px-3.5 py-2.5 text-[12.5px] font-bold text-ink-soft shadow-sm transition hover:border-moss hover:text-moss active:scale-[0.98]">
+              <Ic name="doc" size={14} /> Modelo
+            </button>
+            <button onClick={abrirNova} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2.5 text-[13px] font-bold text-lime shadow-sm transition hover:bg-pine-deep active:scale-[0.98]">
+              <Ic name="plus" size={14} sw={2.6} /> Nova atividade
+            </button>
+            <input ref={importRef} type="file" accept=".csv,.tsv,.txt" className="hidden" onChange={(e) => void importarArquivo(e.target.files?.[0])} />
+          </div>
         }
       />
 

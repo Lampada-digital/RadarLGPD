@@ -379,7 +379,7 @@ export default function AuthScreen({ onVoltar }: { onVoltar?: () => void }) {
             Todo dado pessoal, <span className="text-lime">no radar.</span>
           </h1>
           <p className="mt-4 text-[14px] leading-relaxed text-cream/70">
-            Mapeamento LGPD e GDPR, programas das 7 normas ISO, políticas em PDF e direitos dos titulares — com classificação assistida por IA que roda 100% no navegador.
+            Mapeamento LGPD e GDPR, programas das normas ISO e certificações, políticas em PDF e direitos dos titulares — com classificação assistida por IA que roda 100% no navegador.
           </p>
           <div className="mt-5 space-y-3">
             <FeedAoVivo />
@@ -387,7 +387,7 @@ export default function AuthScreen({ onVoltar }: { onVoltar?: () => void }) {
         </div>
 
         <div className="relative flex flex-wrap gap-x-6 gap-y-1.5 text-[10.5px] font-semibold tracking-wide text-cream/40">
-          <span>7 dias grátis</span><span>R$ 149,00/mês depois</span><span>Art. 37 LGPD · Art. 30 GDPR</span><span>11 frameworks</span><span>PDF CONTROLADO</span>
+          <span>7 dias grátis</span><span>R$ 149,00/mês depois</span><span>Art. 37 LGPD · Art. 30 GDPR</span><span>12 frameworks</span><span>PDF CONTROLADO</span>
         </div>
       </div>
 

@@ -174,7 +174,7 @@ export default function Reports() {
         <div className="mt-4 overflow-hidden rounded-xl border border-sand bg-cream print:rounded-none print:border-0">
           <div className="border-b border-sand bg-paper px-6 py-4">
             <p className="text-[10px] font-bold tracking-[0.18em] text-moss uppercase">Seção 3 · Programas de implementação ISO</p>
-            <h2 className="font-display mt-1 text-[20px] font-extrabold text-ink">Estado dos 7 frameworks</h2>
+            <h2 className="font-display mt-1 text-[20px] font-extrabold text-ink">Estado dos frameworks e certificações</h2>
           </div>
           <table className="w-full text-left text-[12px]">
             <thead>
