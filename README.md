@@ -44,6 +44,31 @@ npm run dev        # abre em http://localhost:5173
 npm run build      # gera a pasta dist/
 ```
 
+## Hospedar direto pelo GitHub (GitHub Pages)
+
+O repositório já vem com o workflow `.github/workflows/deploy.yml`: cada push na branch
+`main`/`master` faz build com **base relativo** (`--base=./`) e publica no Pages —
+funciona na raiz **e** em subpasta, sem configurar nada no código.
+
+1. Suba o código para um repositório do GitHub;
+2. No repositório: **Settings → Pages → Build and deployment → Source = “GitHub Actions”**;
+3. Faça um push (ou *Actions → Deploy — GitHub Pages → Run workflow*);
+4. Aguarde o workflow ficar verde e acesse:
+   - **Site de usuário** (repo chamado `SEU-USUARIO.github.io`): `https://SEU-USUARIO.github.io`
+   - **Site de projeto** (qualquer outro nome): `https://SEU-USUARIO.github.io/NOME-DO-REPO`
+
+> Dica: se criar o repositório com o nome exato `SEU-USUARIO.github.io`, o site sobe na
+> raiz do seu domínio GitHub — o formato mais simples de portfólio.
+
+## Outras opções (a partir do mesmo repositório)
+
+| Serviço | Como conectar | Observações |
+|---|---|---|
+| **GitHub Pages** | Automático via Actions (acima) | Grátis, direto no GitHub |
+| **Netlify** | *Add new site → Import do GitHub* | Já configurado via `netlify.toml` |
+| **Cloudflare Pages** | *Create project → GitHub* · build `npm run build` · output `dist` | CDN global grátis |
+| **Vercel** | *Import Project → repo* | Config no `vercel.json` |
+
 ## Deploy na Vercel
 
 O projeto já está pronto: há um `vercel.json` com rewrites de SPA e headers de segurança (CSP, HSTS, etc.).
