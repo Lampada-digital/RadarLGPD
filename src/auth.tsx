@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
-/* ============ Modelo de usuário e sessão (persistência local) ============ */
+/* ============ Usuários, sessão e política de bloqueio (persistência local) ============ */
 
 export type Usuario = {
   id: string;
@@ -21,12 +21,15 @@ export const DEMO_SENHA = "demo1234";
 
 const USERS_KEY = "radarlgpd:users";
 const SESSION_KEY = "radarlgpd:session";
+const LOCK_KEY = "radarlgpd:lock";
+const MAX_TENTATIVAS = 5;
+const BLOQUEIO_SEG = 60;
 
 function uid() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
-/* Hash de senha: SHA-256 (Web Crypto) com salt; fallback FNV para contexto não-seguro */
+/* Hash de senha: SHA-256 (Web Crypto) com salt; fallback FNV em contexto não-seguro */
 function hashFallback(str: string): string {
   let h1 = 0x811c9dc5 >>> 0;
   let h2 = 0x9e3779b9 >>> 0;
@@ -39,7 +42,7 @@ function hashFallback(str: string): string {
 }
 
 export async function hashSenha(senha: string, salt: string): Promise<string> {
-  const texto = `${salt}::radarlgpd::${senha}`;
+  const texto = `${salt}::radargrc::${senha}`;
   try {
     if (typeof crypto !== "undefined" && crypto.subtle) {
       const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto));
@@ -48,7 +51,7 @@ export async function hashSenha(senha: string, salt: string): Promise<string> {
         .join("");
     }
   } catch {
-    /* contexto inseguro — usa fallback abaixo */
+    /* contexto inseguro — fallback */
   }
   return hashFallback(texto) + hashFallback(texto.split("").reverse().join(""));
 }
@@ -81,6 +84,24 @@ function limparSessao() {
   sessionStorage.removeItem(SESSION_KEY);
 }
 
+/* política de bloqueio por força bruta */
+function lerLocks(): Record<string, { n: number; ate: number }> {
+  try {
+    return JSON.parse(localStorage.getItem(LOCK_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+function gravarLocks(l: Record<string, { n: number; ate: number }>) {
+  localStorage.setItem(LOCK_KEY, JSON.stringify(l));
+}
+export function bloqueioRestante(email: string): number {
+  const l = lerLocks()[email.trim().toLowerCase()];
+  if (!l) return 0;
+  const resta = Math.ceil((l.ate - Date.now()) / 1000);
+  return resta > 0 ? resta : 0;
+}
+
 /* ============ Contexto ============ */
 
 type AuthCtx = {
@@ -110,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           {
             id: "demo-radar",
             nome: "Conta Demonstração",
-            empresa: "Radar LGPD",
+            empresa: "Radar GRC",
             email: DEMO_EMAIL,
             salt,
             hash: await hashSenha(DEMO_SENHA, salt),
@@ -130,11 +151,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const entrar = useCallback(async (email: string, senha: string, lembrar: boolean) => {
+    const mail = email.trim().toLowerCase();
+    const bloqueado = bloqueioRestante(mail);
+    if (bloqueado > 0) return `Conta bloqueada temporariamente após ${MAX_TENTATIVAS} tentativas. Aguarde ${bloqueado}s e tente novamente.`;
     await new Promise((r) => setTimeout(r, 600));
-    const u = lerUsers().find((x) => x.email === email.trim().toLowerCase());
-    if (!u) return "Nenhuma conta encontrada com este e-mail.";
+    const u = lerUsers().find((x) => x.email === mail);
+    if (!u) return "Nenhuma conta encontrada com este e-mail. Crie seu acesso primeiro.";
     const h = await hashSenha(senha, u.salt);
-    if (h !== u.hash) return "Senha incorreta. Confira e tente novamente.";
+    if (h !== u.hash) {
+      const locks = lerLocks();
+      const reg = locks[mail] ?? { n: 0, ate: 0 };
+      reg.n += 1;
+      if (reg.n >= MAX_TENTATIVAS) {
+        reg.ate = Date.now() + BLOQUEIO_SEG * 1000;
+        reg.n = 0;
+        gravarLocks({ ...locks, [mail]: reg });
+        return `${MAX_TENTATIVAS} tentativas incorretas — acesso bloqueado por ${BLOQUEIO_SEG}s (política de segurança).`;
+      }
+      gravarLocks({ ...locks, [mail]: reg });
+      const restantes = MAX_TENTATIVAS - reg.n;
+      return `Senha incorreta. ${restantes} tentativa${restantes > 1 ? "s" : ""} restante${restantes > 1 ? "s" : ""} antes do bloqueio.`;
+    }
+    gravarLocks({ ...lerLocks(), [mail]: { n: 0, ate: 0 } });
     gravarSessao({ userId: u.id, lembrar });
     setUsuario(u);
     return null;
@@ -144,7 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await new Promise((r) => setTimeout(r, 700));
     const lista = lerUsers();
     const mail = email.trim().toLowerCase();
-    if (lista.some((x) => x.email === mail)) return "Já existe uma conta cadastrada com este e-mail.";
+    if (lista.some((x) => x.email === mail)) return "Já existe uma conta cadastrada com este e-mail. Faça login.";
     const salt = uid();
     const novo: Usuario = {
       id: uid(),
@@ -155,8 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hash: await hashSenha(senha, salt),
       criadoEm: new Date().toISOString(),
     };
-    const atualizada = [...lista, novo];
-    gravarUsers(atualizada);
+    gravarUsers([...lista, novo]);
     gravarSessao({ userId: novo.id, lembrar: true });
     setUsuario(novo);
     return null;

@@ -118,6 +118,7 @@ export interface Solicitacao {
   tipo: string;
   data: string; // ISO
   status: StatusSolicitacao;
+  regime?: "LGPD" | "GDPR";
   resposta?: string;
 }
 
@@ -143,6 +144,8 @@ export const TIPOS_SOLICITACAO = [
 export const CANAIS = ["Portal do titular", "E-mail (encarregado)", "Telefone / SAC", "Presencial"];
 
 export const PRAZO_LGPD_DIAS = 15; // Art. 19, §2º
+export const PRAZO_GDPR_DIAS = 30; // Art. 12(3) GDPR
+export const prazoDe = (s: { regime?: "LGPD" | "GDPR" }) => (s.regime === "GDPR" ? PRAZO_GDPR_DIAS : PRAZO_LGPD_DIAS);
 
 export const riscoScore = (p: number, i: number) => p * i;
 
