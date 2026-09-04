@@ -309,6 +309,48 @@ input[type="range"] {
   user-drag: none;
 }
 
+/* ---------- site de vendas ---------- */
+html {
+  scroll-behavior: smooth;
+}
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee-track {
+  animation: marquee 28s linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+.float-soft {
+  animation: float-soft 3.6s ease-in-out infinite;
+}
+@keyframes scan-line {
+  0% {
+    top: 0%;
+  }
+  100% {
+    top: 100%;
+  }
+}
+.scan-line {
+  animation: scan-line 5s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal,
   .anim-rise,
