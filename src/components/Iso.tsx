@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useStore } from "../store";
 import { useAuth } from "../auth";
-import { ESTADOS_META, FRAMEWORKS, progressoFramework } from "../domain";
-import type { EstadoIso, Framework } from "../domain";
+import { ESTADOS_META, FRAMEWORKS, fmtTamanho, progressoFramework, uid } from "../domain";
+import type { Anexo, EstadoIso, Framework } from "../domain";
 import { nivelMaturidade, sugerirPlanoIso } from "../ai";
 import type { PlanoIso } from "../ai";
-import { Cabecalho, Campo, Ic, inputCls, Reveal, Ring, Bloqueado } from "./ui";
+import { gerarPacotePdf, PDF_ADEQUADO_MIN } from "../isoDocs";
+import { Cabecalho, Campo, Ic, inputCls, Modal, Reveal, Ring, Bloqueado } from "./ui";
 
 const ORDEM_ESTADOS: EstadoIso[] = ["nao", "andamento", "impl", "verif"];
 
@@ -98,6 +99,38 @@ function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
   const { usuario } = useAuth();
   const [plano, setPlano] = useState<PlanoIso | null>(null);
   const [gerando, setGerando] = useState(false);
+  const [anexoId, setAnexoId] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const controleAnexo = anexoId ? fw.controles.find((c) => c.id === anexoId) ?? null : null;
+
+  const anexar = async (files: FileList | null) => {
+    if (!files?.length || !controleAnexo) return;
+    const novos: Anexo[] = [];
+    for (const file of Array.from(files)) {
+      const ext = (file.name.split(".").pop() ?? "").toLowerCase();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.onerror = () => reject(new Error("erro"));
+        r.readAsDataURL(file);
+      }).catch(() => undefined);
+      if (!dataUrl) continue;
+      novos.push({ id: uid(), nome: file.name, tipo: file.type.startsWith("image/") ? "img" : "doc", ext, tamanho: file.size, dataUrl, ts: new Date().toISOString() });
+    }
+    if (novos.length) {
+      const atuais = iso[fw.id]?.[controleAnexo.id]?.anexos ?? [];
+      setIso(fw.id, controleAnexo.id, { anexos: [...atuais, ...novos] });
+      registrar("iso", `${novos.length} evidência(s) anexada(s) ao controle ${controleAnexo.ref}.`);
+      toast(`${novos.length} evidência(s) anexada(s) ao controle ${controleAnexo.ref}.`);
+    }
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const baixarPdf = () => {
+    const oficial = gerarPacotePdf({ fw, mapa, pct: p.pct, empresa: usuario?.empresa || usuario?.nome || "Minha Organização", responsavel: usuario?.nome ?? "Responsável" });
+    registrar("iso", `Pacote PDF ${fw.codigo} gerado (${oficial ? "CONTROLADO" : "RASCUNHO"}).`);
+    toast(oficial ? `Pacote de políticas ${fw.codigo} em PDF (CONTROLADO) baixado.` : `PDF baixado em modo RASCUNHO (alcance ${PDF_ADEQUADO_MIN}% para CONTROLADO).`, oficial ? "ok" : "warn");
+  };
 
   const p = progressoFramework(fw, iso);
   const nivel = nivelMaturidade(p.pct);
@@ -184,7 +217,10 @@ function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
               {gerando ? "Gerando com IA…" : "Gerar plano com IA"}
             </button>
             <button onClick={baixarPacote} className="inline-flex items-center justify-center gap-2 rounded-md border border-sand px-4 py-2.5 text-[12.5px] font-bold text-ink-soft transition hover:border-moss hover:text-moss">
-              <Ic name="download" size={14} /> Baixar pacote de políticas
+              <Ic name="download" size={14} /> Baixar pacote (.md)
+            </button>
+            <button onClick={baixarPdf} className="inline-flex items-center justify-center gap-2 rounded-md border border-moss/50 bg-moss/10 px-4 py-2.5 text-[12.5px] font-bold text-moss transition hover:bg-moss/20">
+              <Ic name="printer" size={14} /> Baixar políticas (PDF)
             </button>
           </div>
         </div>
@@ -248,6 +284,14 @@ function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
                       </div>
                     </div>
                     <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => setAnexoId(c.id)}
+                        title="Anexar documentos e imagens de evidência"
+                        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10.5px] font-bold transition active:scale-95 ${(st?.anexos?.length ?? 0) > 0 ? "border-moss bg-moss/10 text-moss" : "border-sand bg-paper text-ink-faint hover:border-moss hover:text-moss"}`}
+                      >
+                        <Ic name="doc" size={12} sw={2.2} /> Evidências
+                        {(st?.anexos?.length ?? 0) > 0 && <span className="rounded-full bg-moss px-1.5 text-[9px] font-extrabold text-cream">{st!.anexos!.length}</span>}
+                      </button>
                       <input
                         defaultValue={st?.nota ?? ""}
                         key={st?.nota ?? ""}
@@ -269,13 +313,62 @@ function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
           </div>
         </div>
       </div>
+
+      <Modal aberto={!!controleAnexo} onFechar={() => setAnexoId(null)} titulo={<span>Evidências · <span className="text-moss">{controleAnexo?.ref}</span> {controleAnexo?.titulo}</span>} largura="max-w-2xl">
+        {controleAnexo && (
+          <div className="space-y-4">
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); void anexar(e.dataTransfer.files); }}
+              className="group flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-sand bg-paper px-4 py-7 text-center transition hover:border-moss hover:bg-moss/6"
+            >
+              <span className="grid size-11 place-items-center rounded-full bg-paper-deep text-moss transition group-hover:bg-pine group-hover:text-lime"><Ic name="download" size={20} className="rotate-180" /></span>
+              <p className="text-[13px] font-bold text-ink">Arraste documentos ou imagens da evidência</p>
+              <p className="text-[11px] text-ink-faint">PDF, Word, Excel, fotos, prints — ficam atrelados ao controle</p>
+              <button onClick={() => inputRef.current?.click()} className="mt-1 inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-[12.5px] font-bold text-lime transition hover:bg-pine-deep active:scale-[0.98]">
+                <Ic name="plus" size={13} sw={2.6} /> Selecionar arquivos
+              </button>
+              <input ref={inputRef} type="file" multiple className="hidden" onChange={(e) => void anexar(e.target.files)} />
+            </div>
+
+            {(mapa[controleAnexo.id]?.anexos?.length ?? 0) === 0 ? (
+              <p className="rounded-md border border-dashed border-sand px-3 py-5 text-center text-[12px] text-ink-faint">Nenhuma evidência anexada — fotos, contratos, atas e relatórios fortalecem a auditoria.</p>
+            ) : (
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {mapa[controleAnexo.id]?.anexos?.map((a) => (
+                  <li key={a.id} className="anim-pop group flex items-center gap-3 rounded-md border border-sand bg-cream p-2.5 transition hover:border-moss/50">
+                    {a.tipo === "img" && a.dataUrl ? (
+                      <img src={a.dataUrl} alt={a.nome} className="size-12 shrink-0 rounded-md border border-sand object-cover" />
+                    ) : (
+                      <span className="grid size-12 shrink-0 place-items-center rounded-md bg-paper-deep text-moss"><Ic name="doc" size={20} /></span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[12px] font-bold text-ink" title={a.nome}>{a.nome}</p>
+                      <p className="text-[10px] text-ink-faint">{a.ext.toUpperCase() || "ARQ"} · {fmtTamanho(a.tamanho)}</p>
+                    </div>
+                    <div className="flex shrink-0 gap-1">
+                      {a.dataUrl && (
+                        <a href={a.dataUrl} download={a.nome} className="rounded-md border border-sand p-1.5 text-ink-soft transition hover:border-moss hover:text-moss" title="Baixar"><Ic name="download" size={12} /></a>
+                      )}
+                      <button
+                        onClick={() => setIso(fw.id, controleAnexo.id, { anexos: (mapa[controleAnexo.id]?.anexos ?? []).filter((x) => x.id !== a.id) })}
+                        className="rounded-md border border-sand p-1.5 text-ink-soft transition hover:border-rust hover:bg-rust/10 hover:text-rust" title="Remover"
+                      ><Ic name="trash" size={12} /></button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
 
-export default function Iso({ onUpgrade }: { onUpgrade?: () => void }) {
+export default function Iso({ onUpgrade, inicial }: { onUpgrade?: () => void; inicial?: string }) {
   const { limites } = useStore();
-  const [sel, setSel] = useState<string | null>(null);
+  const [sel, setSel] = useState<string | null>(inicial ?? null);
   const fw = FRAMEWORKS.find((f) => f.id === sel);
 
   if (!limites.iso) {

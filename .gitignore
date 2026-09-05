@@ -1,5 +1,29 @@
+# Dependências
 node_modules/
-.next/
+
+# Build
 dist/
-build/
+dist-ssr/
+
+# Vercel
+.vercel
+
+# Logs
 *.log
+npm-debug.log*
+
+# Editor / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Ambiente
+.env
+.env.local
+
+# Cache
+.eslintcache
+*.tsbuildinfo
+.next/
+build/

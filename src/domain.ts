@@ -206,10 +206,27 @@ export const ESTADOS_META: Record<EstadoIso, { label: string; fg: string; bg: st
   verif: { label: "Verificado", fg: "#faf8ee", bg: "#132e26" },
 };
 
+export interface Anexo {
+  id: string;
+  nome: string;
+  tipo: "img" | "doc";
+  ext: string;
+  tamanho: number;
+  dataUrl?: string;
+  ts: string;
+}
+
 export interface ControleEstado {
   estado: EstadoIso;
   nota?: string;
   ts?: string;
+  anexos?: Anexo[];
+}
+
+export function fmtTamanho(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 const c = (id: string, ref: string, titulo: string, desc: string): ControleIso => ({ id, ref, titulo, desc });
@@ -266,6 +283,69 @@ export const FRAMEWORKS: Framework[] = [
       c("pci-3", "Req 3", "Proteção de dados armazenados", "Criptografia de PAN."),
       c("pci-8", "Req 8", "Controle de acesso", "Identificação única e MFA."),
       c("pci-12", "Req 12", "Política de segurança", "Política e governança."),
+    ],
+  },
+  {
+    id: "iso22301", codigo: "ISO 22301:2019", titulo: "Continuidade de Negócios (BCM)", cor: "#0e7490",
+    objetivo: "Sistema de Gestão de Continuidade de Negócios: BIA, planos e exercícios.",
+    controles: [
+      c("22301-52", "5.2", "Política de continuidade", "Política aprovada e comunicada."),
+      c("22301-82", "8.2", "BIA — Análise de impacto", "Atividades críticas, RTO/RPO e impactos."),
+      c("22301-84", "8.4", "Estratégias de continuidade", "Soluções dentro dos objetivos de recuperação."),
+      c("22301-85", "8.5", "Planos de continuidade", "Resposta, alerta e recuperação."),
+      c("22301-86", "8.6", "Exercícios e testes", "Validação periódica dos planos."),
+    ],
+  },
+  {
+    id: "iso31000", codigo: "ISO 31000:2018", titulo: "Gestão de Riscos", cor: "#c98a1f",
+    objetivo: "Princípios, estrutura e processo de gestão de riscos corporativos.",
+    controles: [
+      c("31000-52", "5.2", "Liderança e comprometimento", "Mandato da alta direção."),
+      c("31000-643", "6.4.3", "Identificação de riscos", "Registro com causas e consequências."),
+      c("31000-644", "6.4.4", "Análise de riscos", "Probabilidade x impacto."),
+      c("31000-65", "6.5", "Tratamento de riscos", "Planos com responsáveis e residual."),
+    ],
+  },
+  {
+    id: "iso37301", codigo: "ISO 37301:2021", titulo: "Gestão de Compliance", cor: "#132e26",
+    objetivo: "Cultura de integridade com compliance eficaz e auditável.",
+    controles: [
+      c("37301-52", "5.2", "Política de compliance", "Objetivos e escopo definidos."),
+      c("37301-61", "6.1", "Riscos de compliance", "Riscos priorizados."),
+      c("37301-83", "8.3", "Canal de denúncias", "Canal seguro e sem retaliação."),
+      c("37301-92", "9.2", "Auditoria interna", "Auditorias periódicas."),
+    ],
+  },
+  {
+    id: "iso37001", codigo: "ISO 37001:2016", titulo: "Gestão Antissuborno", cor: "#bd4f26",
+    objetivo: "Prevenir, detectar e tratar suborno com sistema verificável.",
+    controles: [
+      c("37001-52", "5.2", "Política antissuborno", "Tolerância zero comunicada."),
+      c("37001-45", "4.5", "Avaliação de riscos de suborno", "Riscos por transação e parceiro."),
+      c("37001-82", "8.2", "Due diligence", "Sócios, fornecedores e agentes."),
+      c("37001-84", "8.4", "Brindes e hospitalidades", "Limites e registro."),
+    ],
+  },
+  {
+    id: "ai-gov", codigo: "Governança de IA", titulo: "ISO/IEC 42001 + AI Act", cor: "#7a4f8f",
+    objetivo: "Sistema de Gestão de IA responsável e conforme o EU AI Act.",
+    controles: [
+      c("ai-42", "4.2", "Política de IA", "Diretrizes aprovadas pela direção."),
+      c("ai-61", "6.1", "Riscos de IA", "Avaliação de riscos e impactos."),
+      c("ai-82", "8.2", "Avaliação de impacto de IA", "DPIA de IA para alto risco."),
+      c("ai-84", "8.4", "Supervisão humana", "Intervenção em decisões críticas."),
+      c("ai-50", "AI Act 50", "Transparência", "Sinalização de conteúdo sintético."),
+    ],
+  },
+  {
+    id: "cookies", codigo: "Gestão de Cookies", titulo: "ePrivacy + GDPR", cor: "#2f7f74",
+    objetivo: "Consentimento e inventário de cookies conforme ePrivacy/GDPR.",
+    controles: [
+      c("ck-inv", "Art. 5(3)", "Inventário de cookies", "Cookies mapeados e classificados."),
+      c("ck-bloq", "ePrivacy", "Bloqueio prévio", "Não essenciais bloqueados até consentimento."),
+      c("ck-par", "GDPR Art. 7", "Paridade aceitar/recusar", "Mesma facilidade nas duas opções."),
+      c("ck-reg", "GDPR Art. 7(1)", "Prova de consentimento", "Evidência registrada."),
+      c("ck-ret", "ePrivacy", "Retirada facilitada", "Retirar tão fácil quanto conceder."),
     ],
   },
 ];

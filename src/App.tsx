@@ -13,14 +13,21 @@ import Activities from "./components/Activities";
 import RiskMatrix from "./components/RiskMatrix";
 import Requests from "./components/Requests";
 import Gdpr from "./components/Gdpr";
+import GdprAvancado from "./components/GdprAvancado";
 import Iso from "./components/Iso";
 import Plans, { TrialGate, diasRestantesTrial } from "./components/Plans";
 import AdminPanel from "./components/AdminPanel";
+import Reports from "./components/Reports";
+import Security from "./components/Security";
+import Cookies from "./components/Cookies";
+import AccountModal from "./components/AccountModal";
 
 type Page =
   | "dashboard" | "assistente"
   | "lgpd-registro" | "lgpd-risco" | "lgpd-titulares" | "lgpd-bases"
-  | "gdpr-ropa" | "iso" | "planos" | "admin";
+  | "gdpr-ropa" | "gdpr-avancado"
+  | "iso" | "ai-gov" | "cookies"
+  | "relatorios" | "seguranca" | "planos" | "admin";
 
 const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; icone: string; badge?: "ia" }[] }[] = [
   { secao: "Operação", itens: [
@@ -35,9 +42,16 @@ const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; i
   ]},
   { secao: "GDPR · União Europeia", itens: [
     { id: "gdpr-ropa", label: "ROPA (Art. 30)", icone: "doc" },
+    { id: "gdpr-avancado", label: "DPIA & bases", icone: "globe" },
   ]},
   { secao: "Governança", itens: [
     { id: "iso", label: "Frameworks ISO", icone: "brain" },
+    { id: "ai-gov", label: "Governança de IA", icone: "spark" },
+    { id: "cookies", label: "Gestão de Cookies", icone: "filter" },
+  ]},
+  { secao: "Entrega", itens: [
+    { id: "relatorios", label: "Relatórios", icone: "printer" },
+    { id: "seguranca", label: "Segurança", icone: "shield" },
     { id: "planos", label: "Assinatura", icone: "star" },
   ]},
   { secao: "Administração", admin: true, itens: [
@@ -53,7 +67,12 @@ const TITULOS: Record<Page, string> = {
   "lgpd-titulares": "Solicitações de titulares",
   "lgpd-bases": "Bases legais LGPD",
   "gdpr-ropa": "ROPA — Art. 30 GDPR",
-  iso: "Programas ISO",
+  "gdpr-avancado": "GDPR — DPIA, bases e transferências",
+  iso: "Programas ISO & certificações",
+  "ai-gov": "Governança de IA (ISO 42001 / AI Act)",
+  cookies: "Gestão de Cookies & consentimento",
+  relatorios: "Relatórios & exportações",
+  seguranca: "Central de segurança",
   planos: "Assinatura & plano",
   admin: "Painel administrativo",
 };
@@ -114,6 +133,7 @@ function Shell() {
   const [pagina, setPagina] = useState<Page>("dashboard");
   const [menuAberto, setMenuAberto] = useState(false);
   const [menuUser, setMenuUser] = useState(false);
+  const [contaAberta, setContaAberta] = useState(false);
   const userRef = useRef(usuario);
 
   useEffect(() => {
@@ -226,6 +246,7 @@ function Shell() {
                       <p className="truncate text-[12.5px] font-bold text-ink">{usuario?.nome}</p>
                       <p className="truncate text-[11px] text-ink-faint">{usuario?.email}</p>
                     </div>
+                    <button onClick={() => { setContaAberta(true); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold text-ink-soft transition hover:bg-paper hover:text-ink"><Ic name="user" size={15} /> Minha conta</button>
                     <button onClick={() => { irPara("planos"); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold text-ink-soft transition hover:bg-paper hover:text-ink"><Ic name="star" size={15} /> Assinatura</button>
                     {ehAdmin && <button onClick={() => { irPara("admin"); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold text-ink-soft transition hover:bg-paper hover:text-ink"><Ic name="shield" size={15} /> Painel admin</button>}
                     <button onClick={() => { registrar("auth", `Logout solicitado: ${usuario?.email}`); sair(); }} className="flex w-full items-center gap-2.5 border-t border-sand px-3.5 py-2.5 text-[12.5px] font-bold text-rust transition hover:bg-rust-soft/40"><Ic name="x" size={15} /> Sair da conta</button>
@@ -245,13 +266,19 @@ function Shell() {
             {pagina === "lgpd-titulares" && <Requests onUpgrade={() => irPara("planos")} />}
             {pagina === "lgpd-bases" && <BasesLegais />}
             {pagina === "gdpr-ropa" && <Gdpr onUpgrade={() => irPara("planos")} />}
+            {pagina === "gdpr-avancado" && <GdprAvancado />}
             {pagina === "iso" && <Iso onUpgrade={() => irPara("planos")} />}
+            {pagina === "ai-gov" && <Iso onUpgrade={() => irPara("planos")} inicial="ai-gov" />}
+            {pagina === "cookies" && <Cookies />}
+            {pagina === "relatorios" && <Reports />}
+            {pagina === "seguranca" && <Security />}
             {pagina === "planos" && <Plans />}
             {pagina === "admin" && ehAdmin && <AdminPanel />}
           </div>
         </main>
       </div>
 
+      <AccountModal aberto={contaAberta} onFechar={() => setContaAberta(false)} />
       <ToastHost />
     </div>
   );
