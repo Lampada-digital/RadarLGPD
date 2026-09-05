@@ -175,18 +175,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [pronto, setPronto] = useState(false);
 
-  /* seed da conta demo (acesso permanente) + restauração de sessão */
+  /* seed da conta demo (acesso total permanente) + restauração de sessão.
+     A conta é SEMPRE garantida com acesso completo (admin + plano Completo),
+     mesmo que já exista no navegador com dados de uma versão anterior. */
   useEffect(() => {
     (async () => {
-      let lista = lerUsers();
-      if (!lista.some((u) => u.email === DEMO_EMAIL)) {
-        const salt = uid();
-        lista.push({
-          id: "demo-radar", orgId: "org-demo", nome: "Conta Demonstração", empresa: "Radar GRC",
-          email: DEMO_EMAIL, cargo: "Encarregado(a) de dados (DPO)", salt, hash: await hashSenha(DEMO_SENHA, salt),
-          criadoEm: new Date().toISOString(), papel: "admin", plano: "completo", demo: true,
-        });
-        gravarUsers(lista);
+      const lista = lerUsers();
+      const salt = uid();
+      const hash = await hashSenha(DEMO_SENHA, salt);
+      const demoCompleta = {
+        id: "demo-radar", orgId: "org-demo", nome: "Administrador Root", empresa: "Radar GRC",
+        email: DEMO_EMAIL, cargo: "Administrador do sistema", salt, hash,
+        criadoEm: new Date().toISOString(), papel: "admin" as Papel, plano: "completo" as PlanoConta, demo: true,
+      };
+      const idx = lista.findIndex((u) => u.email === DEMO_EMAIL);
+      if (idx === -1) {
+        lista.push(demoCompleta);
+      } else {
+        /* atualiza a conta existente para acesso total (corrige dados antigos/limitados) */
+        lista[idx] = { ...lista[idx], ...demoCompleta, criadoEm: lista[idx].criadoEm };
+      }
+      gravarUsers(lista);
+      /* limpa qualquer bloqueio anti força-bruta pendente da conta demo */
+      const locks = lerLocks();
+      if (locks[DEMO_EMAIL]) {
+        delete locks[DEMO_EMAIL];
+        gravarLocks(locks);
       }
       const s = lerSessao();
       if (s) {
