@@ -6,6 +6,7 @@ import { BASES_ART7, BASES_ART11, TODAS_BASES } from "./domain";
 import { iniciarProtecao } from "./protection";
 import { Ic, ToastHost, Cabecalho, Reveal } from "./components/ui";
 import AuthScreen from "./components/AuthScreen";
+import Landing from "./components/Landing";
 import Dashboard from "./components/Dashboard";
 import Assistant from "./components/Assistant";
 import Activities from "./components/Activities";
@@ -258,11 +259,17 @@ function Shell() {
 
 function Root() {
   const { usuario, pronto, sair } = useAuth();
+  const [tela, setTela] = useState<"landing" | "auth">("landing");
 
   /* conta bloqueada por administrador derruba a sessão ativa */
   useEffect(() => {
     if (usuario?.bloqueado) sair();
   }, [usuario, sair]);
+
+  /* ao sair da conta, volta para o site de vendas */
+  useEffect(() => {
+    if (!usuario) setTela("landing");
+  }, [usuario]);
 
   /* proteção anticópia global (ativa em todas as telas) */
   useEffect(() => {
@@ -270,7 +277,7 @@ function Root() {
   }, [usuario?.email]);
 
   if (!pronto) return <Splash />;
-  if (!usuario) return <AuthScreen onVoltar={() => {}} />;
+  if (!usuario) return tela === "landing" ? <Landing onAcessar={() => setTela("auth")} /> : <AuthScreen onVoltar={() => setTela("landing")} />;
 
   /* trava comercial: trial expirado e sem assinatura → tela de ativação */
   const trialExpirado = !usuario.demo && usuario.plano === "trial" && !!usuario.trialAte && new Date(usuario.trialAte).getTime() < Date.now();
