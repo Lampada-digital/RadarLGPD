@@ -12,6 +12,9 @@ export type PlanoConta = "trial" | "standard" | "business" | "completo";
 export const TRIAL_DIAS = 7;
 export const DEMO_EMAIL = "demo@radarlgpd.app";
 export const DEMO_SENHA = "demo1234";
+/* conta root: administradora master, plano completo, sem marcação de demonstração */
+export const ROOT_EMAIL = "root@radargrc.app";
+export const ROOT_SENHA = "Root#Radar2026";
 
 export interface Usuario {
   id: string;
@@ -195,11 +198,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         /* atualiza a conta existente para acesso total (corrige dados antigos/limitados) */
         lista[idx] = { ...lista[idx], ...demoCompleta, criadoEm: lista[idx].criadoEm };
       }
+
+      /* conta ROOT: acesso total, sem marcação de demonstração */
+      const saltRoot = uid();
+      const hashRoot = await hashSenha(ROOT_SENHA, saltRoot);
+      const rootCompleta = {
+        id: "root-radar", orgId: "org-root", nome: "Administrador Master", empresa: "Radar GRC",
+        email: ROOT_EMAIL, cargo: "Diretoria / C-level", salt: saltRoot, hash: hashRoot,
+        criadoEm: new Date().toISOString(), papel: "admin" as Papel, plano: "completo" as PlanoConta,
+      };
+      const idxRoot = lista.findIndex((u) => u.email === ROOT_EMAIL);
+      if (idxRoot === -1) {
+        lista.push(rootCompleta);
+      } else {
+        lista[idxRoot] = { ...lista[idxRoot], ...rootCompleta, criadoEm: lista[idxRoot].criadoEm };
+      }
+
       gravarUsers(lista);
-      /* limpa qualquer bloqueio anti força-bruta pendente da conta demo */
+      /* limpa qualquer bloqueio anti força-bruta pendente das contas demo e root */
       const locks = lerLocks();
-      if (locks[DEMO_EMAIL]) {
+      if (locks[DEMO_EMAIL] || locks[ROOT_EMAIL]) {
         delete locks[DEMO_EMAIL];
+        delete locks[ROOT_EMAIL];
         gravarLocks(locks);
       }
       const s = lerSessao();
