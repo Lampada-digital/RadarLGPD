@@ -5,9 +5,6 @@
    - IA: classificação de cookies, diagnóstico de conformidade e política pronta
    ===================================================================== */
 
-import { Pdf, A4W, baixarPdf, gerarBytesPdf } from "./pdf";
-import type { Cor } from "./pdf";
-
 /* ---------------- tipos ---------------- */
 
 export type CategoriaCookie = "necessario" | "funcional" | "analitico" | "publicidade";
@@ -346,101 +343,7 @@ export function htmlSiteSimulado(cfg: BannerConfig): string {
 }
 
 /* ---------------- Política de Cookies (PDF e MD) gerada pela IA ---------------- */
-
-const PINE: Cor = [19, 46, 38];
-const LIME: Cor = [201, 233, 79];
-const INK: Cor = [24, 38, 32];
-const SOFT: Cor = [76, 91, 82];
-const SAND: Cor = [221, 214, 191];
-
-export function gerarPdfPoliticaCookies(cfg: BannerConfig, inv: CookieItem[], diag: DiagnosticoCookies) {
-  const pdf = new Pdf();
-  const M = 56;
-  const CW = A4W - M * 2;
-  let y = 0;
-
-  const header = (titulo: string) => {
-    pdf.retangulo(0, 0, A4W, 34, PINE);
-    pdf.retangulo(0, 34, A4W, 1.6, LIME);
-    pdf.texto(M, 12, 9, titulo, { cor: LIME, bold: true });
-    pdf.texto(A4W - M, 12, 8, new Date().toLocaleDateString("pt-BR"), { cor: [180, 205, 192], align: "right" });
-    pdf.texto(M, 23, 7.5, cfg.siteNome + " · gerada pela IA do Radar GRC", { cor: [180, 205, 192] });
-    y = 56;
-  };
-  const secao = (n: string, t: string) => {
-    if (y > 760) { pdf.novaPagina(); header("Política de Cookies — " + cfg.siteNome); }
-    y += 4;
-    pdf.retangulo(M, y, 3, 12, LIME);
-    pdf.texto(M + 9, y + 1, 11, n + "  " + t, { bold: true, cor: INK });
-    y += 20;
-  };
-  const corpo = (t: string) => {
-    if (y > 770) { pdf.novaPagina(); header("Política de Cookies — " + cfg.siteNome); }
-    y = pdf.paragrafo(M, y, 9.5, t, CW, { cor: SOFT });
-    y += 3;
-  };
-
-  header("Política de Cookies — " + cfg.siteNome);
-  pdf.texto(M, y, 21, "Política de Cookies", { bold: true, cor: INK });
-  y += 20;
-  pdf.texto(M, y, 12, cfg.siteNome + " · " + cfg.siteUrl, { cor: SOFT });
-  y += 26;
-  pdf.linha(M, y, A4W - M, y, SAND);
-  y += 14;
-
-  secao("1.", "O que são cookies");
-  corpo("Cookies são pequenos arquivos de texto armazenados no dispositivo do visitante quando um site é acessado. Eles permitem que o site funcione corretamente, lembre preferências, meça audiência e, em alguns casos, personalize anúncios. Esta política descreve as categorias utilizadas por " + cfg.siteNome + ", em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018), o Regulamento Geral de Proteção de Dados da UE (GDPR) e a Diretiva ePrivacy.");
-
-  secao("2.", "Como usamos — categorias");
-  for (const c of CATEGORIAS_COOKIE.filter((c) => cfg.categorias.includes(c.id))) {
-    const n = inv.filter((i) => i.categoria === c.id).length;
-    pdf.texto(M, y, 9.5, "•  " + c.label + " (" + n + " cookie" + (n === 1 ? "" : "s") + ")", { bold: true, cor: INK });
-    y = pdf.paragrafo(M + 14, y + 12, 9, c.desc + (c.id === "necessario" ? " Base legal: legítimo interesse/obrigação (não exigem consentimento)." : " Base legal: consentimento do titular (art. 7º, I, LGPD · Art. 6(1)(a) GDPR)."), CW - 14, { cor: SOFT });
-    y += 3;
-  }
-
-  secao("3.", "Inventário de cookies");
-  pdf.retangulo(M, y, CW, 15, PINE);
-  pdf.texto(M + 5, y + 4, 7.5, "COOKIE", { cor: LIME, bold: true });
-  pdf.texto(M + 110, y + 4, 7.5, "PROVEDOR", { cor: LIME, bold: true });
-  pdf.texto(M + 230, y + 4, 7.5, "CATEGORIA", { cor: LIME, bold: true });
-  pdf.texto(M + 330, y + 4, 7.5, "DURAÇÃO", { cor: LIME, bold: true });
-  pdf.texto(A4W - M - 60, y + 4, 7.5, "ORIGEM", { cor: LIME, bold: true });
-  y += 15;
-  for (const c of inv) {
-    if (y > 770) { pdf.novaPagina(); header("Política de Cookies — " + cfg.siteNome); y = 60; }
-    const cat = CATEGORIAS_COOKIE.find((x) => x.id === c.categoria)!;
-    pdf.texto(M + 5, y + 3, 8, c.nome.slice(0, 22), { cor: INK });
-    pdf.texto(M + 110, y + 3, 8, c.provedor.slice(0, 24), { cor: SOFT });
-    pdf.texto(M + 230, y + 3, 8, cat.curta, { cor: SOFT });
-    pdf.texto(M + 330, y + 3, 8, c.duracao, { cor: SOFT });
-    pdf.texto(A4W - M - 60, y + 3, 8, c.origem === "proprio" ? "Próprio" : "Terceiro", { cor: SOFT });
-    pdf.linha(M, y + 13, A4W - M, y + 13, SAND, 0.4);
-    y += 14;
-  }
-  y += 8;
-
-  secao("4.", "Gestão do consentimento");
-  corpo("Ao acessar o site, o visitante é apresentado ao banner de consentimento e pode aceitar todas as categorias, recusar as não essenciais ou personalizar suas escolhas. As escolhas ficam registradas com data/hora e versão do banner, constituindo evidência de conformidade. É possível alterar ou retirar o consentimento a qualquer momento pelo link 'Preferências de cookies' no rodapé, com a mesma facilidade da concessão (art. 8º, §5º, LGPD · Art. 7(3) GDPR).");
-
-  secao("5.", "Seus direitos");
-  corpo("Nos termos da LGPD e do GDPR, o titular pode solicitar acesso, correção, portabilidade e eliminação dos dados coletados por cookies, além de revogar o consentimento. As solicitações devem ser encaminhadas ao Encarregado de Dados pelo e-mail " + cfg.dpoEmail + " e serão respondidas nos prazos legais (15 dias — LGPD; 30 dias — GDPR).");
-
-  secao("6.", "Retenção e transferências");
-  corpo("Cada cookie possui duração própria, descrita no inventário acima, limitada ao necessário para sua finalidade. Cookies de fornecedores localizados fora do Brasil/EEE são protegidos por mecanismos adequados de transferência (cláusulas-padrão contratuais), conforme Capítulo V do GDPR e arts. 33–36 da LGPD.");
-
-  secao("7.", "Diagnóstico da IA (uso interno)");
-  corpo("Conformidade estimada: " + diag.score + "/100 (" + diag.nivel + "). Taxas de consentimento: aceite total " + diag.taxas.aceite + "% · recusa " + diag.taxas.recusa + "% · personalizado " + diag.taxas.personalizado + "%, sobre " + diag.total + " eventos registrados. Recomenda-se revalidação do consentimento a cada 6–13 meses e revisão deste documento sempre que novos cookies forem publicados.");
-
-  if (y > 730) { pdf.novaPagina(); header("Política de Cookies — " + cfg.siteNome); y = 60; }
-  y += 14;
-  pdf.linha(M, y + 40, M + 200, y + 40, INK, 0.8);
-  pdf.linha(A4W - M - 200, y + 40, A4W - M, y + 40, INK, 0.8);
-  pdf.texto(M, y + 46, 8.5, "Encarregado de Dados — " + cfg.dpoEmail, { cor: SOFT });
-  pdf.texto(A4W - M - 200, y + 46, 8.5, "Aprovação — " + cfg.siteNome, { cor: SOFT });
-
-  baixarPdf("politica-de-cookies-" + cfg.siteNome.replace(/[^a-z0-9]/gi, "-") + ".pdf", gerarBytesPdf(pdf));
-}
+/* Função removida - implementação movida para src/components/Cookies.tsx */
 
 export function gerarMdPoliticaCookies(cfg: BannerConfig, inv: CookieItem[]): string {
   const linhas: string[] = [];
