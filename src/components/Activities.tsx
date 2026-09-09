@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useStore } from "../store";
 import { AREAS, BASES_ART7, BASES_ART11, CATEGORIAS_DADOS, MEDIDAS, SUJEITOS, TODAS_BASES, fmtData, uid, ZONA_META, zonaRisco } from "../domain";
 import type { Atividade } from "../domain";
 import { analisarLGPD } from "../ai";
+import { parseCsv, lerArquivoTexto, baixarModelo } from "../exportImport";
 import { Cabecalho, Campo, ChipToggle, Ic, inputCls, Modal, Reveal } from "./ui";
 
 const VAZIA: Atividade = {
@@ -32,6 +33,69 @@ export default function Activities({ buscaInicial = "", onUpgrade }: { buscaInic
   const [editando, setEditando] = useState(false);
   const [novoCompart, setNovoCompart] = useState("");
   const [confirmando, setConfirmando] = useState<string | null>(null);
+  const importRef = useRef<HTMLInputElement>(null);
+
+  const importarArquivo = async (file: File) => {
+    try {
+      const texto = await lerArquivoTexto(file);
+      const linhas = parseCsv(texto);
+      if (linhas.length < 2) {
+        toast("Arquivo vazio ou sem dados.", "warn");
+        return;
+      }
+      const cab = linhas[0].map((c) => c.toLowerCase().trim());
+      const iNome = cab.findIndex((c) => c.includes("nome") || c.includes("atividade"));
+      const iArea = cab.findIndex((c) => c.includes("area"));
+      const iFinalidade = cab.findIndex((c) => c.includes("finalidade") || c.includes("purpose"));
+      const iBase = cab.findIndex((c) => c.includes("base"));
+      const iRetencao = cab.findIndex((c) => c.includes("retencao") || c.includes("retention"));
+      if (iNome === -1) {
+        toast("Coluna 'Nome' ou 'Atividade' não encontrada.", "warn");
+        return;
+      }
+      let importados = 0;
+      for (let i = 1; i < linhas.length; i++) {
+        const ln = linhas[i];
+        const nome = (ln[iNome] ?? "").trim();
+        if (!nome) continue;
+        const atividade: Atividade = {
+          id: uid(),
+          nome,
+          area: iArea >= 0 ? (ln[iArea] ?? "Operações").trim() : "Operações",
+          responsavel: "",
+          finalidade: iFinalidade >= 0 ? (ln[iFinalidade] ?? "").trim() : nome,
+          baseLegalId: iBase >= 0 ? (ln[iBase] ?? "legitimo").trim() : "legitimo",
+          sujeitos: ["Clientes"],
+          dados: ["nome"],
+          retencao: iRetencao >= 0 ? (ln[iRetencao] ?? "").trim() : "",
+          retencaoJustificativa: "",
+          compartilhamento: [],
+          transferenciaInternacional: false,
+          medidas: [],
+          probabilidade: 3,
+          impacto: 3,
+          origem: "manual",
+          criadoEm: new Date().toISOString().slice(0, 10),
+        };
+        addAtividade(atividade);
+        importados++;
+      }
+      registrar("sistema", `${importados} atividade(s) importada(s) de ${file.name}.`);
+      toast(`${importados} atividade(s) importada(s) com sucesso!`);
+    } catch {
+      toast("Erro ao ler o arquivo.", "warn");
+    }
+  };
+
+  const baixarModeloCSV = () => {
+    const linhas = [
+      ["Nome", "Área", "Finalidade", "Base Legal", "Retenção"],
+      ["Folha de pagamento", "RH", "Processar salários", "obrigacao-legal", "5 anos"],
+      ["CRM", "Vendas", "Gerenciar leads", "legitimo", "24 meses"],
+    ];
+    baixarModelo("modelo-importacao-lgpd.csv", linhas);
+    toast("Modelo CSV baixado. Preencha e importe de volta.");
+  };
 
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -121,9 +185,18 @@ export default function Activities({ buscaInicial = "", onUpgrade }: { buscaInic
         titulo="Atividades de tratamento"
         desc="Inventário completo das operações com dados pessoais: finalidade, base legal, categorias de dados, retenção, compartilhamento e risco."
         acao={
-          <button onClick={abrirNova} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2.5 text-[13px] font-bold text-lime shadow-sm transition hover:bg-pine-deep active:scale-[0.98]">
-            <Ic name={limites.podeCriar ? "plus" : "lock"} size={14} sw={2.6} /> Nova atividade
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => importRef.current?.click()} className="inline-flex items-center gap-2 rounded-md border border-sand bg-cream px-3 py-2 text-[12px] font-bold text-ink-soft transition hover:border-moss hover:text-moss">
+              <Ic name="download" size={13} className="rotate-180" /> Importar
+            </button>
+            <button onClick={baixarModeloCSV} className="inline-flex items-center gap-2 rounded-md border border-sand bg-cream px-3 py-2 text-[12px] font-bold text-ink-soft transition hover:border-moss hover:text-moss">
+              <Ic name="doc" size={13} /> Modelo
+            </button>
+            <button onClick={abrirNova} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-[13px] font-bold text-lime shadow-sm transition hover:bg-pine-deep active:scale-[0.98]">
+              <Ic name={limites.podeCriar ? "plus" : "lock"} size={14} sw={2.6} /> Nova atividade
+            </button>
+            <input ref={importRef} type="file" accept=".csv,.tsv,.txt" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void importarArquivo(f); e.target.value = ""; }} />
+          </div>
         }
       />
 

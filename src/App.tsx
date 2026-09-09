@@ -21,12 +21,19 @@ import Reports from "./components/Reports";
 import Security from "./components/Security";
 import Cookies from "./components/Cookies";
 import AccountModal from "./components/AccountModal";
+import GapAnalysis from "./components/GapAnalysis";
+import Siem from "./components/Siem";
+import PentestLab from "./components/PentestLab";
+import PrivacyByDesign from "./components/PrivacyByDesign";
+import AuditoriaTI from "./components/AuditoriaTI";
+import Comite from "./components/Comite";
 
 type Page =
   | "dashboard" | "assistente"
   | "lgpd-registro" | "lgpd-risco" | "lgpd-titulares" | "lgpd-bases"
   | "gdpr-ropa" | "gdpr-avancado"
   | "iso" | "ai-gov" | "cookies"
+  | "gap-analysis" | "siem" | "pentest-lab" | "privacy-by-design" | "auditoria-ti" | "comite"
   | "relatorios" | "seguranca" | "planos" | "admin";
 
 const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; icone: string; badge?: "ia" }[] }[] = [
@@ -48,6 +55,14 @@ const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; i
     { id: "iso", label: "Frameworks ISO", icone: "brain" },
     { id: "ai-gov", label: "Governança de IA", icone: "spark" },
     { id: "cookies", label: "Gestão de Cookies", icone: "filter" },
+    { id: "gap-analysis", label: "Gap Analysis", icone: "matrix" },
+    { id: "privacy-by-design", label: "Privacy by Design", icone: "shield" },
+    { id: "comite", label: "Comitê LGPD/GDPR", icone: "user" },
+  ]},
+  { secao: "Segurança Ofensiva", itens: [
+    { id: "siem", label: "SIEM", icone: "eye" },
+    { id: "pentest-lab", label: "Laboratório Pentest", icone: "shield" },
+    { id: "auditoria-ti", label: "Auditoria em TI", icone: "doc" },
   ]},
   { secao: "Entrega", itens: [
     { id: "relatorios", label: "Relatórios", icone: "printer" },
@@ -71,6 +86,12 @@ const TITULOS: Record<Page, string> = {
   iso: "Programas ISO & certificações",
   "ai-gov": "Governança de IA (ISO 42001 / AI Act)",
   cookies: "Gestão de Cookies & consentimento",
+  "gap-analysis": "Gap Analysis",
+  siem: "SIEM — Monitoramento de segurança",
+  "pentest-lab": "Laboratório de Pentest",
+  "privacy-by-design": "Privacy by Design",
+  "auditoria-ti": "Auditoria em TI",
+  comite: "Comitê LGPD & GDPR",
   relatorios: "Relatórios & exportações",
   seguranca: "Central de segurança",
   planos: "Assinatura & plano",
@@ -270,6 +291,12 @@ function Shell() {
             {pagina === "iso" && <Iso onUpgrade={() => irPara("planos")} />}
             {pagina === "ai-gov" && <Iso onUpgrade={() => irPara("planos")} inicial="ai-gov" />}
             {pagina === "cookies" && <Cookies />}
+            {pagina === "gap-analysis" && <GapAnalysis />}
+            {pagina === "siem" && <Siem />}
+            {pagina === "pentest-lab" && <PentestLab />}
+            {pagina === "privacy-by-design" && <PrivacyByDesign />}
+            {pagina === "auditoria-ti" && <AuditoriaTI />}
+            {pagina === "comite" && <Comite />}
             {pagina === "relatorios" && <Reports />}
             {pagina === "seguranca" && <Security />}
             {pagina === "planos" && <Plans />}

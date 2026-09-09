@@ -3,9 +3,84 @@
    ===================================================================== */
 
 import { FRAMEWORKS } from "./domain";
-import type { ControleEstado } from "./domain";
+import type { ControleEstado, Framework, ControleIso } from "./domain";
 
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+/* =====================================================================
+   IA Autônoma — explica cada controle ISO e sugere como coletar evidências
+   ===================================================================== */
+
+export interface ExplicacaoControle {
+  controle: ControleIso;
+  framework: Framework;
+  explicacao: string;
+  comoColetarEvidencias: string[];
+  exemplosEvidencias: string[];
+}
+
+export function explicarControle(framework: Framework, controle: ControleIso): ExplicacaoControle {
+  const explicacoes: Record<string, { explicacao: string; comoColetar: string[]; exemplos: string[] }> = {
+    "27001-41": {
+      explicacao: "Define o contexto interno e externo da organização para o SGSI, incluindo partes interessadas e seus requisitos.",
+      comoColetar: ["Documente análise SWOT ou PESTEL", "Liste partes interessadas e requisitos", "Defina escopo do SGSI"],
+      exemplos: ["Documento de contexto organizacional", "Lista de partes interessadas", "Declaração de escopo"],
+    },
+    "27001-52": {
+      explicacao: "Política de segurança da informação aprovada pela alta direção, comunicada e disponível.",
+      comoColetar: ["Aprovação formal da diretoria", "Comunicação a todos os colaboradores", "Disponibilização em intranet"],
+      exemplos: ["Política assinada", "E-mails de comunicação", "Print da intranet"],
+    },
+    "27001-612": {
+      explicacao: "Metodologia de avaliação de riscos com critérios de probabilidade e impacto definidos.",
+      comoColetar: ["Documente metodologia de avaliação", "Defina matriz de risco", "Registre critérios de aceitação"],
+      exemplos: ["Metodologia de avaliação de riscos", "Matriz de risco 5x5", "Critérios de aceitação de risco"],
+    },
+    "27001-a813": {
+      explicacao: "Backups de informações com teste periódico de restauração para garantir recuperabilidade.",
+      comoColetar: ["Configure rotina de backup", "Documente frequência e retenção", "Execute testes de restauração"],
+      exemplos: ["Print do sistema de backup", "Relatório de testes de restauração", "Política de backup"],
+    },
+    "27701-4": {
+      explicacao: "Mapeamento completo dos fluxos de dados pessoais (PII) desde a coleta até a eliminação.",
+      comoColetar: ["Inventarie todos os tratamentos", "Documente finalidades e bases legais", "Mapeie fluxos de dados"],
+      exemplos: ["Registro de operações (RoPA)", "Fluxogramas de dados", "Mapa de dados pessoais"],
+    },
+    "27701-5": {
+      explicacao: "Programa de avaliação de impacto de privacidade (DPIA) para tratamentos de alto risco.",
+      comoColetar: ["Defina critérios para DPIA", "Execute DPIAs para tratamentos críticos", "Documente análises"],
+      exemplos: ["Política de DPIA", "Relatórios de DPIA executados", "Critérios de acionamento"],
+    },
+    "soc2-cc61": {
+      explicacao: "Controle de acesso lógico com autenticação forte (MFA) e gestão de privilégios baseada em função.",
+      comoColetar: ["Implemente MFA para acessos críticos", "Documente política de RBAC", "Revise acessos periodicamente"],
+      exemplos: ["Print de configuração MFA", "Política de controle de acesso", "Relatório de revisão de acessos"],
+    },
+    "pci-3": {
+      explicacao: "Proteção de dados de titular de cartão (PAN) armazenados com criptografia forte.",
+      comoColetar: ["Implemente criptografia AES-256", "Mascare PAN em telas e logs", "Documente política de proteção"],
+      exemplos: ["Print de configuração de criptografia", "Política de proteção de dados de cartão", "Relatório de varredura de PAN"],
+    },
+  };
+
+  const dados = explicacoes[controle.id] ?? {
+    explicacao: `Controle ${controle.ref} da norma ${framework.codigo}: ${controle.desc}`,
+    comoColetar: ["Documente a implementação do controle", "Execute o controle conforme definido", "Registre evidências de execução"],
+    exemplos: [`Documento de ${controle.titulo}`, "Prints de configuração", "Relatórios de execução"],
+  };
+
+  return {
+    controle,
+    framework,
+    explicacao: dados.explicacao,
+    comoColetarEvidencias: dados.comoColetar,
+    exemplosEvidencias: dados.exemplos,
+  };
+}
+
+/* =====================================================================
+   IA de Mapeamento — classificação heurística de operações de tratamento
+   ===================================================================== */
 
 export interface AnaliseLGPD {
   dados: string[];

@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../store";
 import { TODAS_BASES, ZONA_META, zonaRisco } from "../domain";
 import { Cabecalho, Ic, Reveal } from "./ui";
+import { baixarCsv, baixarExcel, baixarJson } from "../exportImport";
 
 export default function RiskMatrix() {
-  const { atividades } = useStore();
+  const { atividades, toast, registrar } = useStore();
   const [sel, setSel] = useState<{ p: number; i: number } | null>(null);
 
   const [recalc, setRecalc] = useState(false);
@@ -34,6 +35,45 @@ export default function RiskMatrix() {
   const selScore = sel ? sel.p * sel.i : 0;
   const selMeta = sel ? ZONA_META[zonaRisco(selScore)] : null;
 
+  const exportarCsv = () => {
+    const linhas = [
+      ["Atividade", "Área", "Responsável", "Probabilidade", "Impacto", "Risco", "Zona"],
+      ...atividades.map((a) => {
+        const score = a.probabilidade * a.impacto;
+        const zona = zonaRisco(score);
+        return [a.nome, a.area, a.responsavel, String(a.probabilidade), String(a.impacto), String(score), ZONA_META[zona].label];
+      }),
+    ];
+    baixarCsv(`matriz-risco-${Date.now()}.csv`, linhas);
+    registrar("sistema", "Matriz de risco exportada em CSV.");
+    toast("Matriz de risco exportada em CSV.");
+  };
+
+  const exportarExcel = () => {
+    const linhas = [
+      ["Atividade", "Área", "Responsável", "Probabilidade", "Impacto", "Risco", "Zona"],
+      ...atividades.map((a) => {
+        const score = a.probabilidade * a.impacto;
+        const zona = zonaRisco(score);
+        return [a.nome, a.area, a.responsavel, String(a.probabilidade), String(a.impacto), String(score), ZONA_META[zona].label];
+      }),
+    ];
+    baixarExcel(`matriz-risco-${Date.now()}.xls`, linhas);
+    registrar("sistema", "Matriz de risco exportada em Excel.");
+    toast("Matriz de risco exportada em Excel.");
+  };
+
+  const exportarJson = () => {
+    const dados = atividades.map((a) => {
+      const score = a.probabilidade * a.impacto;
+      const zona = zonaRisco(score);
+      return { ...a, risco: score, zona: ZONA_META[zona].label };
+    });
+    baixarJson(`matriz-risco-${Date.now()}.json`, { geradoEm: new Date().toISOString(), atividades: dados });
+    registrar("sistema", "Matriz de risco exportada em JSON.");
+    toast("Matriz de risco exportada em JSON.");
+  };
+
   return (
     <div>
       <Cabecalho
@@ -41,10 +81,17 @@ export default function RiskMatrix() {
         titulo="Matriz de risco 5 × 5"
         desc="Cada ponto é uma atividade de tratamento posicionada por probabilidade × impacto. Clique numa célula para inspecionar e priorize o plano de ação pelos quadrantes críticos."
         acao={
-          <span className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[11px] font-extrabold tracking-wide uppercase transition-all duration-300 ${recalc ? "scale-105 border-lime bg-lime text-pine shadow-[0_8px_20px_-8px_rgba(201,233,79,0.8)]" : "border-sand bg-cream text-ink-faint"}`} title="A matriz deriva do mapeamento: qualquer atividade criada, editada ou importada reposiciona os pontos automaticamente.">
-            <span className={`size-2 rounded-full ${recalc ? "pulse-dot bg-pine" : "bg-moss"}`} />
-            {recalc ? "Matriz recalculada agora" : "Recalcula em tempo real"}
-          </span>
+          <div className="flex gap-2">
+            <button onClick={exportarCsv} className="inline-flex items-center gap-2 rounded-md border border-sand bg-cream px-3 py-2 text-[12px] font-bold text-ink-soft transition hover:border-moss hover:text-moss">
+              <Ic name="download" size={13} /> CSV
+            </button>
+            <button onClick={exportarExcel} className="inline-flex items-center gap-2 rounded-md border border-sand bg-cream px-3 py-2 text-[12px] font-bold text-ink-soft transition hover:border-moss hover:text-moss">
+              <Ic name="download" size={13} /> Excel
+            </button>
+            <button onClick={exportarJson} className="inline-flex items-center gap-2 rounded-md bg-pine px-3 py-2 text-[12px] font-bold text-lime transition hover:bg-pine-deep">
+              <Ic name="download" size={13} /> JSON
+            </button>
+          </div>
         }
       />
 

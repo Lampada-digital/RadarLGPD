@@ -2,9 +2,9 @@ import { useMemo, useRef, useState } from "react";
 import { useStore } from "../store";
 import { useAuth } from "../auth";
 import { ESTADOS_META, FRAMEWORKS, fmtTamanho, progressoFramework, uid } from "../domain";
-import type { Anexo, EstadoIso, Framework } from "../domain";
-import { nivelMaturidade, sugerirPlanoIso } from "../ai";
-import type { PlanoIso } from "../ai";
+import type { Anexo, EstadoIso, Framework, ControleIso } from "../domain";
+import { nivelMaturidade, sugerirPlanoIso, explicarControle } from "../ai";
+import type { PlanoIso, ExplicacaoControle } from "../ai";
 import { gerarPacotePdf, PDF_ADEQUADO_MIN } from "../isoDocs";
 import { Cabecalho, Campo, Ic, inputCls, Modal, Reveal, Ring, Bloqueado } from "./ui";
 
@@ -100,6 +100,7 @@ function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
   const [plano, setPlano] = useState<PlanoIso | null>(null);
   const [gerando, setGerando] = useState(false);
   const [anexoId, setAnexoId] = useState<string | null>(null);
+  const [explicacao, setExplicacao] = useState<ExplicacaoControle | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const controleAnexo = anexoId ? fw.controles.find((c) => c.id === anexoId) ?? null : null;
 
@@ -267,6 +268,13 @@ function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
                         <p className="text-[11px] text-ink-faint">{c.desc}</p>
                       </div>
                       <div className="flex gap-1">
+                        <button
+                          onClick={() => setExplicacao(explicarControle(fw, c))}
+                          title="IA: explicar controle e sugerir evidências"
+                          className="inline-flex items-center gap-1 rounded-md border border-lime/50 bg-lime/10 px-2 py-1 text-[10px] font-extrabold text-moss transition hover:bg-lime/20 active:scale-95"
+                        >
+                          <Ic name="spark" size={10} sw={2.4} /> IA
+                        </button>
                         {ORDEM_ESTADOS.map((e) => (
                           <button
                             key={e}
@@ -359,6 +367,47 @@ function Detalhe({ fw, voltar }: { fw: Framework; voltar: () => void }) {
                 ))}
               </ul>
             )}
+          </div>
+        )}
+      </Modal>
+
+      <Modal aberto={!!explicacao} onFechar={() => setExplicacao(null)} titulo={<span className="flex items-center gap-2"><Ic name="spark" size={16} sw={2.2} className="text-moss" /> IA · {explicacao?.controle.ref} {explicacao?.controle.titulo}</span>} largura="max-w-2xl">
+        {explicacao && (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-lime/30 bg-lime-soft/20 p-4">
+              <p className="text-[11px] font-extrabold tracking-[0.14em] text-moss uppercase">O que é este controle</p>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-ink">{explicacao.explicacao}</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-extrabold tracking-[0.14em] text-moss uppercase">Como coletar evidências</p>
+              <ul className="mt-2 space-y-1.5">
+                {explicacao.comoColetarEvidencias.map((p, i) => (
+                  <li key={i} className="flex items-start gap-2 text-[12px] text-ink-soft">
+                    <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full bg-moss/12 text-moss text-[9px] font-bold">{i + 1}</span>
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="text-[11px] font-extrabold tracking-[0.14em] text-moss uppercase">Exemplos de evidências</p>
+              <ul className="mt-2 space-y-1.5">
+                {explicacao.exemplosEvidencias.map((e, i) => (
+                  <li key={i} className="flex items-start gap-2 text-[12px] text-ink-soft">
+                    <Ic name="check" size={13} sw={2.6} className="mt-0.5 shrink-0 text-moss" />
+                    {e}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-md border border-amber/40 bg-amber-soft/50 p-3">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold text-ink">
+                <Ic name="alert" size={12} sw={2.4} className="text-amber" /> Dica da IA
+              </p>
+              <p className="mt-1 text-[11px] leading-snug text-ink-soft">
+                Use o botão "Evidências" acima para anexar documentos, fotos ou prints que comprovem a implementação deste controle. Quanto mais evidências, mais sólida a auditoria.
+              </p>
+            </div>
           </div>
         )}
       </Modal>
