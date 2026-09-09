@@ -1,13 +1,13 @@
 import { useMemo, useRef, useState } from "react";
 import { useStore } from "../store";
-import { AREAS, BASES_ART7, BASES_ART11, CATEGORIAS_DADOS, MEDIDAS, SUJEITOS, TODAS_BASES, fmtData, uid, ZONA_META, zonaRisco } from "../types";
-import type { Atividade } from "../types";
-import { analisar } from "../ai";
-import { baixarModelo, importarLgpd, MODELO_LGPD, parseCsv } from "../importCsv";
+import { AREAS, BASES_ART7, BASES_ART11, CATEGORIAS_DADOS, MEDIDAS, SUJEITOS, TODAS_BASES, fmtData, uid, ZONA_META, zonaRisco } from "../domain";
+import type { Atividade } from "../domain";
+import { analisarLGPD } from "../ai";
+import { parseCsv, lerArquivoTexto, baixarModelo } from "../exportImport";
 import { Cabecalho, Campo, ChipToggle, Ic, inputCls, Modal, Reveal } from "./ui";
 
 const VAZIA: Atividade = {
-  id: "", nome: "", area: "RH", responsavel: "", finalidade: "", baseLegalId: "consentimento",
+  id: "", nome: "", area: "RH", responsavel: "", finalidade: "", baseLegalId: "legitimo",
   sujeitos: [], dados: [], retencao: "", retencaoJustificativa: "", compartilhamento: [],
   transferenciaInternacional: false, medidas: [], probabilidade: 3, impacto: 3,
   origem: "manual", criadoEm: "", observacoes: "",
@@ -24,31 +24,108 @@ function RiscoChip({ p, i }: { p: number; i: number }) {
   );
 }
 
-export default function Activities({ buscaInicial = "" }: { buscaInicial?: string }) {
-  const { atividades, addAtividade, updateAtividade, removeAtividade, toast, registrar } = useStore();
-  const importRef = useRef<HTMLInputElement>(null);
+export default function Activities({ buscaInicial = "", onUpgrade }: { buscaInicial?: string; onUpgrade?: () => void }) {
+  const { atividades, addAtividade, updateAtividade, removeAtividade, toast, registrar, limites } = useStore();
   const [busca, setBusca] = useState(buscaInicial);
   const [fArea, setFArea] = useState("");
   const [fZona, setFZona] = useState("");
-  const [fBase, setFBase] = useState("");
   const [form, setForm] = useState<Atividade | null>(null);
   const [editando, setEditando] = useState(false);
   const [novoCompart, setNovoCompart] = useState("");
   const [confirmando, setConfirmando] = useState<string | null>(null);
+  const importRef = useRef<HTMLInputElement>(null);
+
+  const importarArquivo = async (file: File) => {
+    try {
+      const texto = await lerArquivoTexto(file);
+      const linhas = parseCsv(texto);
+      if (linhas.length < 2) {
+        toast("Arquivo vazio ou sem dados.", "warn");
+        return;
+      }
+      const cab = linhas[0].map((c) => c.toLowerCase().trim());
+      const iNome = cab.findIndex((c) => c.includes("nome") || c.includes("atividade"));
+      const iArea = cab.findIndex((c) => c.includes("area"));
+      const iFinalidade = cab.findIndex((c) => c.includes("finalidade") || c.includes("purpose"));
+      const iBase = cab.findIndex((c) => c.includes("base"));
+      const iRetencao = cab.findIndex((c) => c.includes("retencao") || c.includes("retention"));
+      if (iNome === -1) {
+        toast("Coluna 'Nome' ou 'Atividade' não encontrada.", "warn");
+        return;
+      }
+      let importados = 0;
+      for (let i = 1; i < linhas.length; i++) {
+        const ln = linhas[i];
+        const nome = (ln[iNome] ?? "").trim();
+        if (!nome) continue;
+        const atividade: Atividade = {
+          id: uid(),
+          nome,
+          area: iArea >= 0 ? (ln[iArea] ?? "Operações").trim() : "Operações",
+          responsavel: "",
+          finalidade: iFinalidade >= 0 ? (ln[iFinalidade] ?? "").trim() : nome,
+          baseLegalId: iBase >= 0 ? (ln[iBase] ?? "legitimo").trim() : "legitimo",
+          sujeitos: ["Clientes"],
+          dados: ["nome"],
+          retencao: iRetencao >= 0 ? (ln[iRetencao] ?? "").trim() : "",
+          retencaoJustificativa: "",
+          compartilhamento: [],
+          transferenciaInternacional: false,
+          medidas: [],
+          probabilidade: 3,
+          impacto: 3,
+          origem: "manual",
+          criadoEm: new Date().toISOString().slice(0, 10),
+        };
+        addAtividade(atividade);
+        importados++;
+      }
+      registrar("sistema", `${importados} atividade(s) importada(s) de ${file.name}.`);
+      toast(`${importados} atividade(s) importada(s) com sucesso!`);
+    } catch {
+      toast("Erro ao ler o arquivo.", "warn");
+    }
+  };
+
+  const baixarModeloCSV = () => {
+    const linhas = [
+      ["Nome", "Área", "Finalidade", "Base Legal", "Retenção"],
+      ["Folha de pagamento", "RH", "Processar salários", "obrigacao-legal", "5 anos"],
+      ["CRM", "Vendas", "Gerenciar leads", "legitimo", "24 meses"],
+    ];
+    baixarModelo("modelo-importacao-lgpd.csv", linhas);
+    toast("Modelo CSV baixado. Preencha e importe de volta.");
+  };
 
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase();
     return atividades.filter((a) => {
       if (fArea && a.area !== fArea) return false;
-      if (fBase && a.baseLegalId !== fBase) return false;
       if (fZona && zonaRisco(a.probabilidade * a.impacto) !== fZona) return false;
       if (q && ![a.nome, a.finalidade, a.responsavel, a.area].some((v) => v.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [atividades, busca, fArea, fBase, fZona]);
+  }, [atividades, busca, fArea, fZona]);
 
-  const abrirNova = () => { setEditando(false); setForm({ ...VAZIA, id: uid(), criadoEm: new Date().toISOString().slice(0, 10) }); };
-  const abrirEdicao = (a: Atividade) => { setEditando(true); setForm({ ...a, dados: [...a.dados], sujeitos: [...a.sujeitos], medidas: [...a.medidas], compartilhamento: [...a.compartilhamento] }); };
+  const abrirNova = () => {
+    if (!limites.podeCriar) {
+      toast("O trial é somente leitura. Assine um plano para criar atividades.", "warn");
+      onUpgrade?.();
+      return;
+    }
+    setEditando(false);
+    setForm({ ...VAZIA, id: uid(), criadoEm: new Date().toISOString().slice(0, 10) });
+  };
+
+  const abrirEdicao = (a: Atividade) => {
+    if (!limites.podeCriar) {
+      toast("O trial é somente leitura.", "warn");
+      onUpgrade?.();
+      return;
+    }
+    setEditando(true);
+    setForm({ ...a, dados: [...a.dados], sujeitos: [...a.sujeitos], medidas: [...a.medidas], compartilhamento: [...a.compartilhamento] });
+  };
 
   const salvar = () => {
     if (!form) return;
@@ -60,51 +137,27 @@ export default function Activities({ buscaInicial = "" }: { buscaInicial?: strin
     const zona = ZONA_META[zonaRisco(score)];
     if (editando) {
       updateAtividade(form);
-      toast(`Registro atualizado — matriz de risco recalculada: "${form.nome}" em zona ${zona.label} (score ${score}).`);
+      toast(`Registro atualizado — matriz recalculada: zona ${zona.label} (score ${score}).`);
     } else {
       addAtividade({ ...form, origem: "manual" });
-      registrar("lgpd", `Atividade "${form.nome}" mapeada; matriz recalculada em zona ${zona.label} (${score}).`);
-      toast(`Mapeada! A matriz de risco foi recalculada automaticamente: zona ${zona.label} (P${form.probabilidade} × I${form.impacto} = ${score}).`);
+      registrar("lgpd", `Atividade "${form.nome}" mapeada; matriz em zona ${zona.label} (${score}).`);
+      toast(`Mapeada! Matriz de risco recalculada: zona ${zona.label} (P${form.probabilidade} × I${form.impacto} = ${score}).`);
     }
     setForm(null);
   };
 
-  /* ---------- importação de planilha → alimenta o mapeamento e a matriz ---------- */
-  const importarArquivo = async (file: File | undefined) => {
-    if (!file) return;
-    try {
-      const texto = await file.text();
-      const linhas = parseCsv(texto);
-      const { itens, erros } = importarLgpd(linhas);
-      itens.forEach((a) => addAtividade(a));
-      if (itens.length) {
-        const zonas = new Map<keyof typeof ZONA_META, number>();
-        itens.forEach((a) => {
-          const z = zonaRisco(a.probabilidade * a.impacto);
-          zonas.set(z, (zonas.get(z) ?? 0) + 1);
-        });
-        const resumoZonas = [...zonas.entries()].map(([z, n]) => `${n} ${ZONA_META[z].label.toLowerCase()}`).join(" · ");
-        registrar("sistema", `Importação de planilha: ${itens.length} atividade(s) LGPD adicionada(s) de "${file.name}".`);
-        toast(`Importadas ${itens.length} atividade(s) — a matriz de risco foi recalculada automaticamente (${resumoZonas}).`);
-      } else {
-        toast("Nenhuma linha válida encontrada na planilha.", "warn");
-      }
-      erros.slice(0, 3).forEach((e) => toast(e, "warn"));
-      if (erros.length > 3) toast(`…e mais ${erros.length - 3} aviso(s) de importação.`, "warn");
-    } catch {
-      toast("Não foi possível ler o arquivo. Use CSV exportado do Excel/Google Sheets.", "warn");
-    } finally {
-      if (importRef.current) importRef.current.value = "";
-    }
-  };
-
   const autoIA = () => {
     if (!form) return;
+    if (!limites.ia) {
+      toast("O Assistente de IA faz parte dos planos Business/Completo.", "warn");
+      onUpgrade?.();
+      return;
+    }
     if (!form.finalidade.trim() && !form.nome.trim()) {
       toast("Descreva a finalidade (ou o nome) para a IA classificar.", "warn");
       return;
     }
-    const a = analisar(form.finalidade || form.nome);
+    const a = analisarLGPD(form.finalidade || form.nome);
     setForm({
       ...form,
       dados: [...new Set([...form.dados, ...a.dados])],
@@ -132,20 +185,32 @@ export default function Activities({ buscaInicial = "" }: { buscaInicial?: strin
         titulo="Atividades de tratamento"
         desc="Inventário completo das operações com dados pessoais: finalidade, base legal, categorias de dados, retenção, compartilhamento e risco."
         acao={
-          <div className="flex flex-wrap items-center gap-2">
-            <button onClick={() => importRef.current?.click()} className="inline-flex items-center gap-2 rounded-md border border-sand bg-cream px-3.5 py-2.5 text-[12.5px] font-bold text-ink-soft shadow-sm transition hover:border-moss hover:text-moss active:scale-[0.98]">
-              <Ic name="download" size={14} className="rotate-180" /> Importar planilha
+          <div className="flex gap-2">
+            <button onClick={() => importRef.current?.click()} className="inline-flex items-center gap-2 rounded-md border border-sand bg-cream px-3 py-2 text-[12px] font-bold text-ink-soft transition hover:border-moss hover:text-moss">
+              <Ic name="download" size={13} className="rotate-180" /> Importar
             </button>
-            <button onClick={() => baixarModelo("modelo-mapeamento-lgpd.csv", MODELO_LGPD)} className="inline-flex items-center gap-2 rounded-md border border-sand bg-cream px-3.5 py-2.5 text-[12.5px] font-bold text-ink-soft shadow-sm transition hover:border-moss hover:text-moss active:scale-[0.98]">
-              <Ic name="doc" size={14} /> Modelo
+            <button onClick={baixarModeloCSV} className="inline-flex items-center gap-2 rounded-md border border-sand bg-cream px-3 py-2 text-[12px] font-bold text-ink-soft transition hover:border-moss hover:text-moss">
+              <Ic name="doc" size={13} /> Modelo
             </button>
-            <button onClick={abrirNova} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2.5 text-[13px] font-bold text-lime shadow-sm transition hover:bg-pine-deep active:scale-[0.98]">
-              <Ic name="plus" size={14} sw={2.6} /> Nova atividade
+            <button onClick={abrirNova} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-[13px] font-bold text-lime shadow-sm transition hover:bg-pine-deep active:scale-[0.98]">
+              <Ic name={limites.podeCriar ? "plus" : "lock"} size={14} sw={2.6} /> Nova atividade
             </button>
-            <input ref={importRef} type="file" accept=".csv,.tsv,.txt" className="hidden" onChange={(e) => void importarArquivo(e.target.files?.[0])} />
+            <input ref={importRef} type="file" accept=".csv,.tsv,.txt" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void importarArquivo(f); e.target.value = ""; }} />
           </div>
         }
       />
+
+      {limites.trial && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-amber/60 bg-amber-soft/50 px-4 py-3">
+          <span className="grid size-8 shrink-0 place-items-center rounded-md bg-amber text-pine"><Ic name="eye" size={15} sw={2.2} /></span>
+          <p className="min-w-0 flex-1 text-[12px] leading-snug text-ink-soft">
+            <strong className="text-ink">Modo visualização (trial).</strong> Você pode consultar os {atividades.length} registros de exemplo, mas a criação e a IA são liberadas com a assinatura.
+          </p>
+          <button onClick={onUpgrade} className="inline-flex items-center gap-1.5 rounded-md bg-pine px-3.5 py-1.5 text-[11.5px] font-extrabold text-lime transition hover:bg-pine-deep active:scale-[0.98]">
+            Desbloquear <Ic name="arrow" size={11} />
+          </button>
+        </div>
+      )}
 
       {/* filtros */}
       <Reveal>
@@ -161,10 +226,6 @@ export default function Activities({ buscaInicial = "" }: { buscaInicial?: strin
           <select value={fZona} onChange={(e) => setFZona(e.target.value)} className={`${inputCls} w-auto`}>
             <option value="">Todo risco</option>
             <option value="baixo">Baixo</option><option value="moderado">Moderado</option><option value="alto">Alto</option><option value="critico">Crítico</option>
-          </select>
-          <select value={fBase} onChange={(e) => setFBase(e.target.value)} className={`${inputCls} w-auto max-w-[220px]`}>
-            <option value="">Todas as bases</option>
-            {TODAS_BASES.map((b) => <option key={b.id} value={b.id}>{b.inciso} — {b.titulo}</option>)}
           </select>
           <span className="ml-auto text-[12px] font-semibold text-ink-faint">{filtradas.length} de {atividades.length} registros</span>
         </div>
@@ -185,7 +246,6 @@ export default function Activities({ buscaInicial = "" }: { buscaInicial?: strin
         <ul>
           {filtradas.map((a, i) => {
             const base = TODAS_BASES.find((b) => b.id === a.baseLegalId);
-            const z = zonaRisco(a.probabilidade * a.impacto);
             const sensivel = a.dados.some((d) => CATEGORIAS_DADOS.find((c) => c.id === d)?.sensivel);
             return (
               <Reveal key={a.id} delay={Math.min(i * 40, 240)}>
@@ -193,15 +253,9 @@ export default function Activities({ buscaInicial = "" }: { buscaInicial?: strin
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-display text-[14px] font-bold text-ink">{a.nome}</p>
-                      {sensivel && (
-                        <span className="inline-flex items-center gap-1 rounded-sm bg-rust/10 px-1.5 py-0.5 text-[9.5px] font-extrabold tracking-wide text-rust uppercase"><Ic name="alert" size={9} sw={2.6} /> Sensível</span>
-                      )}
-                      {a.origem === "ia" && (
-                        <span className="inline-flex items-center gap-1 rounded-sm bg-lime-soft px-1.5 py-0.5 text-[9.5px] font-extrabold tracking-wide text-pine uppercase"><Ic name="spark" size={9} sw={2.6} /> IA</span>
-                      )}
-                      {a.transferenciaInternacional && (
-                        <span className="inline-flex items-center gap-1 rounded-sm bg-paper-deep px-1.5 py-0.5 text-[9.5px] font-extrabold tracking-wide text-ink-soft uppercase"><Ic name="globe" size={9} sw={2.4} /> Intl</span>
-                      )}
+                      {sensivel && <span className="inline-flex items-center gap-1 rounded-sm bg-rust/10 px-1.5 py-0.5 text-[9.5px] font-extrabold tracking-wide text-rust uppercase"><Ic name="alert" size={9} sw={2.6} /> Sensível</span>}
+                      {a.origem === "ia" && <span className="inline-flex items-center gap-1 rounded-sm bg-lime-soft px-1.5 py-0.5 text-[9.5px] font-extrabold tracking-wide text-pine uppercase"><Ic name="spark" size={9} sw={2.6} /> IA</span>}
+                      {a.transferenciaInternacional && <span className="inline-flex items-center gap-1 rounded-sm bg-paper-deep px-1.5 py-0.5 text-[9.5px] font-extrabold tracking-wide text-ink-soft uppercase"><Ic name="globe" size={9} sw={2.4} /> Intl</span>}
                     </div>
                     <p className="mt-0.5 truncate text-[12px] text-ink-soft">{a.finalidade}</p>
                     <p className="mt-1 text-[10.5px] text-ink-faint">{a.sujeitos.join(" · ")} · {a.dados.length} categorias de dados · {fmtData(a.criadoEm)}</p>
@@ -216,20 +270,13 @@ export default function Activities({ buscaInicial = "" }: { buscaInicial?: strin
                   <div className="flex justify-start gap-1.5 lg:justify-end">
                     {confirmando === a.id ? (
                       <>
-                        <button
-                          onClick={() => { removeAtividade(a.id); setConfirmando(null); toast("Registro excluído do mapa de dados.", "warn"); }}
-                          className="rounded-md bg-rust px-2.5 py-1.5 text-[11px] font-bold text-cream transition hover:opacity-90"
-                        >Confirmar</button>
+                        <button onClick={() => { removeAtividade(a.id); setConfirmando(null); toast("Registro excluído do mapa de dados.", "warn"); }} className="rounded-md bg-rust px-2.5 py-1.5 text-[11px] font-bold text-cream transition hover:opacity-90">Confirmar</button>
                         <button onClick={() => setConfirmando(null)} className="rounded-md border border-sand px-2 py-1.5 text-[11px] font-semibold text-ink-soft">Não</button>
                       </>
                     ) : (
                       <>
-                        <button onClick={() => abrirEdicao(a)} className="rounded-md border border-sand p-1.5 text-ink-soft transition hover:border-moss hover:bg-moss/10 hover:text-moss" aria-label="Editar">
-                          <Ic name="pencil" size={14} />
-                        </button>
-                        <button onClick={() => setConfirmando(a.id)} className="rounded-md border border-sand p-1.5 text-ink-soft transition hover:border-rust hover:bg-rust/10 hover:text-rust" aria-label="Excluir">
-                          <Ic name="trash" size={14} />
-                        </button>
+                        <button onClick={() => abrirEdicao(a)} className="rounded-md border border-sand p-1.5 text-ink-soft transition hover:border-moss hover:bg-moss/10 hover:text-moss" aria-label="Editar"><Ic name="pencil" size={14} /></button>
+                        <button onClick={() => setConfirmando(a.id)} className="rounded-md border border-sand p-1.5 text-ink-soft transition hover:border-rust hover:bg-rust/10 hover:text-rust" aria-label="Excluir"><Ic name="trash" size={14} /></button>
                       </>
                     )}
                   </div>
@@ -269,16 +316,16 @@ export default function Activities({ buscaInicial = "" }: { buscaInicial?: strin
 
             <Campo label={`Categorias de dados pessoais (${form.dados.length})`} hint={sensCount ? `${sensCount} sensível(is) — art. 11` : undefined}>
               <div className="grid grid-cols-1 gap-1.5 rounded-md border border-sand bg-paper p-2.5 sm:grid-cols-2">
-                {CATEGORIAS_DADOS.map((c) => (
-                  <ChipToggle key={c.id} ativo={form.dados.includes(c.id)} onClick={() => toggle("dados", c.id)} sensivel={c.sensivel}>
-                    {c.label}{c.sensivel && " · sensível"}
+                {CATEGORIAS_DADOS.map((cd) => (
+                  <ChipToggle key={cd.id} ativo={form.dados.includes(cd.id)} onClick={() => toggle("dados", cd.id)} sensivel={cd.sensivel}>
+                    {cd.label}{cd.sensivel && " · sensível"}
                   </ChipToggle>
                 ))}
               </div>
             </Campo>
 
             <div className="grid gap-3.5 sm:grid-cols-2">
-              <Campo label="Base legal" hint={form.baseLegalId && TODAS_BASES.find((b) => b.id === form.baseLegalId)?.artigo === "art11" ? "dado sensível" : "art. 7º"}>
+              <Campo label="Base legal">
                 <select className={inputCls} value={form.baseLegalId} onChange={(e) => setForm({ ...form, baseLegalId: e.target.value })}>
                   <optgroup label="Dados pessoais — Art. 7º">{BASES_ART7.map((b) => <option key={b.id} value={b.id}>{b.inciso} — {b.titulo}</option>)}</optgroup>
                   <optgroup label="Dados sensíveis — Art. 11">{BASES_ART11.map((b) => <option key={b.id} value={b.id}>{b.inciso} — {b.titulo}</option>)}</optgroup>
@@ -292,19 +339,13 @@ export default function Activities({ buscaInicial = "" }: { buscaInicial?: strin
 
             <Campo label="Compartilhamento com terceiros" hint="operadores e órgãos">
               <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-sand bg-cream p-2">
-                {form.compartilhamento.map((c) => (
-                  <span key={c} className="inline-flex items-center gap-1.5 rounded-md bg-paper-deep px-2 py-1 text-[11.5px] font-semibold text-ink-soft">
-                    {c}
-                    <button onClick={() => setForm({ ...form, compartilhamento: form.compartilhamento.filter((x) => x !== c) })} className="text-ink-faint hover:text-rust"><Ic name="x" size={10} sw={2.6} /></button>
+                {form.compartilhamento.map((cp) => (
+                  <span key={cp} className="inline-flex items-center gap-1.5 rounded-md bg-paper-deep px-2 py-1 text-[11.5px] font-semibold text-ink-soft">
+                    {cp}
+                    <button onClick={() => setForm({ ...form, compartilhamento: form.compartilhamento.filter((x) => x !== cp) })} className="text-ink-faint hover:text-rust"><Ic name="x" size={10} sw={2.6} /></button>
                   </span>
                 ))}
-                <input
-                  value={novoCompart}
-                  onChange={(e) => setNovoCompart(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && novoCompart.trim()) { e.preventDefault(); setForm({ ...form, compartilhamento: [...form.compartilhamento, novoCompart.trim()] }); setNovoCompart(""); } }}
-                  placeholder="Digite e pressione Enter…"
-                  className="min-w-[140px] flex-1 bg-transparent px-1 py-1 text-[12.5px] outline-none placeholder:text-ink-faint"
-                />
+                <input value={novoCompart} onChange={(e) => setNovoCompart(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && novoCompart.trim()) { e.preventDefault(); setForm({ ...form, compartilhamento: [...form.compartilhamento, novoCompart.trim()] }); setNovoCompart(""); } }} placeholder="Digite e pressione Enter…" className="min-w-[140px] flex-1 bg-transparent px-1 py-1 text-[12.5px] outline-none placeholder:text-ink-faint" />
               </div>
             </Campo>
 
@@ -331,10 +372,6 @@ export default function Activities({ buscaInicial = "" }: { buscaInicial?: strin
 
             <Campo label={`Medidas de segurança (${form.medidas.length})`}>
               <div className="flex flex-wrap gap-1.5">{MEDIDAS.map((m) => <ChipToggle key={m} ativo={form.medidas.includes(m)} onClick={() => toggle("medidas", m)}>{m}</ChipToggle>)}</div>
-            </Campo>
-
-            <Campo label="Observações">
-              <textarea className={`${inputCls} min-h-[56px] resize-y`} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} placeholder="Notas do Encarregado, links para RIPD, contratos…" />
             </Campo>
 
             <div className="flex items-center justify-end gap-2.5 border-t border-sand pt-4">

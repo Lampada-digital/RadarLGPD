@@ -63,7 +63,7 @@ body {
   font-family: var(--font-display);
 }
 
-/* ---------- ambient side texture for the rail ---------- */
+/* ---------- textura ambiente dos painéis escuros ---------- */
 .rail-texture {
   background-image: repeating-linear-gradient(
     -45deg,
@@ -195,125 +195,7 @@ body {
   animation: toast-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* ---------- landing: marquee, blips do radar, flutuação ---------- */
-@keyframes marquee {
-  to {
-    transform: translateX(-50%);
-  }
-}
-.marquee-track {
-  animation: marquee 30s linear infinite;
-}
-.marquee:hover .marquee-track {
-  animation-play-state: paused;
-}
-
-@keyframes ping-blip {
-  0% {
-    transform: scale(1);
-    opacity: 0.65;
-  }
-  100% {
-    transform: scale(3.2);
-    opacity: 0;
-  }
-}
-.blip::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 9999px;
-  background: currentColor;
-  animation: ping-blip 2.6s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-
-@keyframes floaty {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-9px);
-  }
-}
-.floaty {
-  animation: floaty 5s ease-in-out infinite;
-}
-
-@keyframes scanline {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(420%);
-  }
-}
-.scanline {
-  animation: scanline 6s linear infinite;
-}
-
-/* ponto de dados viajando pela tubulação da API */
-@keyframes api-flow {
-  0% {
-    left: 0%;
-    opacity: 0;
-  }
-  12% {
-    opacity: 1;
-  }
-  88% {
-    opacity: 1;
-  }
-  100% {
-    left: calc(100% - 7px);
-    opacity: 0;
-  }
-}
-.api-dot {
-  position: absolute;
-  top: 50%;
-  width: 7px;
-  height: 7px;
-  margin-top: -3.5px;
-  border-radius: 999px;
-  background: var(--color-lime);
-  box-shadow: 0 0 10px 2px rgba(201, 233, 79, 0.65);
-  animation: api-flow 1.9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .api-dot {
-    animation: none;
-    display: none;
-  }
-}
-
-input[type="range"] {
-  accent-color: var(--color-moss);
-}
-
-/* ---------- camada de proteção anticópia ---------- */
-.protegido {
-  user-select: none;
-  -webkit-user-select: none;
-}
-.protegido input,
-.protegido textarea,
-.protegido select,
-.protegido [contenteditable="true"] {
-  user-select: text;
-  -webkit-user-select: text;
-}
-.protegido img,
-.protegido canvas {
-  -webkit-user-drag: none;
-  user-drag: none;
-}
-
-/* ---------- site de vendas ---------- */
-html {
-  scroll-behavior: smooth;
-}
-@keyframes marquee {
+@keyframes marquee-x {
   from {
     transform: translateX(0);
   }
@@ -322,11 +204,12 @@ html {
   }
 }
 .marquee-track {
-  animation: marquee 28s linear infinite;
+  animation: marquee-x 26s linear infinite;
 }
 .marquee:hover .marquee-track {
   animation-play-state: paused;
 }
+
 @keyframes float-soft {
   0%,
   100% {
@@ -339,6 +222,7 @@ html {
 .float-soft {
   animation: float-soft 3.6s ease-in-out infinite;
 }
+
 @keyframes scan-line {
   0% {
     top: 0%;
@@ -351,13 +235,41 @@ html {
   animation: scan-line 5s linear infinite;
 }
 
+input[type="range"] {
+  accent-color: var(--color-moss);
+}
+
+/* ============================================================
+   Camada anticópia — aplicada ao site de vendas, login e sistema.
+   Bloqueia seleção, arrasto de imagens e chamada de contexto.
+   (Campos de formulário permanecem usáveis.)
+   ============================================================ */
+.protegido {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.protegido input,
+.protegido textarea,
+.protegido select,
+.protegido [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+.protegido img {
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal,
   .anim-rise,
   .anim-pop,
   .anim-slide-left,
   .bar-grow,
-  .toast-in {
+  .toast-in,
+  .float-soft,
+  .scan-line {
     animation: none;
     transition: none;
     opacity: 1;
@@ -365,7 +277,8 @@ html {
   }
   .radar-sweep,
   .pulse-dot,
-  .caret::after {
+  .caret::after,
+  .marquee-track {
     animation: none;
   }
 }

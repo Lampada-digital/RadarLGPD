@@ -1,283 +1,190 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { SEED_ATIVIDADES, SEED_CHECKLIST, SEED_SOLICITACOES, PRAZO_LGPD_DIAS, diasDesde, zonaRisco } from "./types";
-import type { Atividade, ItemChecklist, Solicitacao } from "./types";
-import { SEED_GDPR_ATIVIDADES, SEED_TRANSFERENCIAS, SEED_DPIA } from "./gdpr";
-import type { GdprAtividade, Transferencia } from "./gdpr";
-import { SEED_ISO } from "./frameworks";
-import type { ControleEstado, EstadoIso } from "./frameworks";
-import { SEED_BANNER, SEED_COOKIES, SEED_EVENTOS } from "./cookies";
-import type { BannerConfig, CookieEvento, CookieItem } from "./cookies";
+import { useAuth } from "./auth";
+import {
+  SEED_ATIVIDADES, SEED_GDPR, SEED_ISO, SEED_SOLICITACOES, SEED_CHECKLIST, uid,
+} from "./domain";
+import type { Atividade, ControleEstado, GdprAtividade, Solicitacao } from "./domain";
 
+/* =====================================================================
+   Store global — dados por usuário, limites de plano, auditoria e toasts.
+   ===================================================================== */
+
+export type ToastTom = "ok" | "warn" | "ia";
 export interface Toast {
   id: number;
   texto: string;
-  tom: "ok" | "ia" | "warn";
+  tom: ToastTom;
 }
 
 export interface EventoAuditoria {
   id: string;
   ts: string;
-  tipo: "auth" | "lgpd" | "gdpr" | "iso" | "seguranca" | "sistema";
+  tipo: string;
   detalhe: string;
 }
 
-interface Store {
+export interface ItemChecklist {
+  id: string;
+  label: string;
+  artigo: string;
+  feito: boolean;
+}
+
+/* ---------- limites por plano ---------- */
+export interface Limites {
+  plano: string;
+  trial: boolean;
+  podeCriar: boolean; // trial: registros somente leitura
+  ia: boolean;
+  importar: boolean;
+  iso: boolean;
+  cert: boolean;
+  relatorios: boolean;
+  maxUsuarios: number;
+}
+
+export function limitesDe(plano: string | undefined, demo: boolean | undefined): Limites {
+  const p = demo ? "completo" : plano ?? "trial";
+  const trial = p === "trial";
+  const biz = p === "business" || p === "completo";
+  return {
+    plano: p,
+    trial,
+    podeCriar: !trial,
+    ia: biz,
+    importar: biz,
+    iso: biz,
+    cert: biz,
+    relatorios: biz,
+    maxUsuarios: trial ? 1 : p === "standard" ? 3 : p === "business" ? 10 : Number.POSITIVE_INFINITY,
+  };
+}
+
+/* ---------- carregamento ---------- */
+function load<T>(key: string, campo: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const obj = JSON.parse(raw);
+      if (obj[campo] !== undefined) return obj[campo] as T;
+    }
+  } catch {
+    /* ignora */
+  }
+  return fallback;
+}
+
+interface StoreCtx {
+  storageKey: string;
+  limites: Limites;
   /* LGPD */
   atividades: Atividade[];
-  solicitacoes: Solicitacao[];
-  checklist: ItemChecklist[];
   addAtividade: (a: Atividade) => void;
   updateAtividade: (a: Atividade) => void;
   removeAtividade: (id: string) => void;
+  solicitacoes: Solicitacao[];
   addSolicitacao: (s: Solicitacao) => void;
   setStatusSolicitacao: (id: string, status: Solicitacao["status"], resposta?: string) => void;
+  checklist: ItemChecklist[];
   toggleCheck: (id: string) => void;
+  score: number;
   /* GDPR */
   gdprAtividades: GdprAtividade[];
   addGdprAtividade: (a: GdprAtividade) => void;
   updateGdprAtividade: (a: GdprAtividade) => void;
   removeGdprAtividade: (id: string) => void;
-  transferencias: Transferencia[];
-  addTransferencia: (t: Transferencia) => void;
-  removeTransferencia: (id: string) => void;
-  dpiaChecks: Record<string, boolean>;
-  toggleDpia: (id: string) => void;
   /* ISO */
   iso: Record<string, Record<string, ControleEstado>>;
   setIso: (frameworkId: string, controlId: string, patch: Partial<ControleEstado>) => void;
-  /* Cookies & consentimento */
-  bannerConfig: BannerConfig;
-  setBannerConfig: (patch: Partial<BannerConfig>) => void;
-  cookieEventos: CookieEvento[];
-  addCookieEventos: (evts: CookieEvento[]) => number;
-  limparCookieEventos: () => void;
-  inventarioCookies: CookieItem[];
-  addCookie: (c: CookieItem) => void;
-  addCookies: (cs: CookieItem[]) => void;
-  removeCookie: (id: string) => void;
-  /* meta */
-  toasts: Toast[];
+  /* auditoria */
   auditoria: EventoAuditoria[];
-  registrar: (tipo: EventoAuditoria["tipo"], detalhe: string) => void;
-  score: number;
-  scoreFatores: { label: string; pct: number; peso: number }[];
-  toast: (texto: string, tom?: Toast["tom"]) => void;
+  registrar: (tipo: string, detalhe: string) => void;
+  /* toasts */
+  toasts: Toast[];
+  toast: (texto: string, tom?: ToastTom) => void;
   reset: () => void;
 }
 
-const Ctx = createContext<Store | null>(null);
+const Ctx = createContext<StoreCtx | null>(null);
+let seqToast = 1;
 
-function load<T>(storageKey: string, campo: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return fallback;
-    const parsed = JSON.parse(raw);
-    return (parsed[campo] as T) ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
+export function StoreProvider({ children, storageKey }: { children: ReactNode; storageKey: string }) {
+  const { usuario } = useAuth();
+  const limites = useMemo(() => limitesDe(usuario?.plano, usuario?.demo), [usuario?.plano, usuario?.demo]);
 
-let seqAud = 0;
-const novoEvento = (tipo: EventoAuditoria["tipo"], detalhe: string): EventoAuditoria => ({
-  id: `ev-${Date.now()}-${seqAud++}`,
-  ts: new Date().toISOString(),
-  tipo,
-  detalhe,
-});
-
-export function StoreProvider({ children, storageKey = "radar-lgpd-v1" }: { children: ReactNode; storageKey?: string }) {
   const [atividades, setAtividades] = useState<Atividade[]>(() => load(storageKey, "atividades", SEED_ATIVIDADES));
   const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>(() => load(storageKey, "solicitacoes", SEED_SOLICITACOES));
   const [checklist, setChecklist] = useState<ItemChecklist[]>(() => load(storageKey, "checklist", SEED_CHECKLIST));
-  const [gdprAtividades, setGdprAtividades] = useState<GdprAtividade[]>(() => load(storageKey, "gdprAtividades", SEED_GDPR_ATIVIDADES));
-  const [transferencias, setTransferencias] = useState<Transferencia[]>(() => load(storageKey, "transferencias", SEED_TRANSFERENCIAS));
-  const [dpiaChecks, setDpiaChecks] = useState<Record<string, boolean>>(() => load(storageKey, "dpiaChecks", SEED_DPIA));
+  const [gdprAtividades, setGdprAtividades] = useState<GdprAtividade[]>(() => load(storageKey, "gdprAtividades", SEED_GDPR));
   const [iso, setIsoState] = useState<Record<string, Record<string, ControleEstado>>>(() => load(storageKey, "iso", SEED_ISO));
-  const [bannerConfig, setBannerConfigState] = useState<BannerConfig>(() => load(storageKey, "bannerConfig", SEED_BANNER));
-  const [cookieEventos, setCookieEventos] = useState<CookieEvento[]>(() => load(storageKey, "cookieEventos", SEED_EVENTOS));
-  const [inventarioCookies, setInventarioCookies] = useState<CookieItem[]>(() => load(storageKey, "inventarioCookies", SEED_COOKIES));
   const [auditoria, setAuditoria] = useState<EventoAuditoria[]>(() => load(storageKey, "auditoria", []));
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ atividades, solicitacoes, checklist, gdprAtividades, transferencias, dpiaChecks, iso, bannerConfig, cookieEventos, inventarioCookies, auditoria }));
+      localStorage.setItem(storageKey, JSON.stringify({ atividades, solicitacoes, checklist, gdprAtividades, iso, auditoria }));
     } catch {
       /* armazenamento indisponível */
     }
-  }, [storageKey, atividades, solicitacoes, checklist, gdprAtividades, transferencias, dpiaChecks, iso, bannerConfig, cookieEventos, inventarioCookies, auditoria]);
+  }, [storageKey, atividades, solicitacoes, checklist, gdprAtividades, iso, auditoria]);
 
-  const registrar = (tipo: EventoAuditoria["tipo"], detalhe: string) =>
-    setAuditoria((a) => [novoEvento(tipo, detalhe), ...a].slice(0, 200));
+  const registrar = (tipo: string, detalhe: string) =>
+    setAuditoria((l) => [{ id: uid(), ts: new Date().toISOString(), tipo, detalhe }, ...l].slice(0, 120));
 
-  const toast = (texto: string, tom: Toast["tom"] = "ok") => {
-    const id = Date.now() + Math.random();
-    setToasts((t) => [...t, { id, texto, tom }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3800);
-  };
-
-  /* ---------- LGPD ---------- */
-  const addAtividade = (a: Atividade) => {
-    setAtividades((l) => [a, ...l]);
-    registrar("lgpd", `Atividade "${a.nome}" adicionada ao registro (art. 37).`);
-  };
-  const updateAtividade = (a: Atividade) => {
-    setAtividades((l) => l.map((x) => (x.id === a.id ? a : x)));
-    registrar("lgpd", `Atividade "${a.nome}" atualizada.`);
-  };
-  const removeAtividade = (id: string) => {
-    const a = atividades.find((x) => x.id === id);
-    setAtividades((l) => l.filter((x) => x.id !== id));
-    registrar("lgpd", `Atividade "${a?.nome ?? id}" excluída do registro.`);
-  };
-  const addSolicitacao = (s: Solicitacao) => {
-    setSolicitacoes((l) => [s, ...l]);
-    registrar("lgpd", `Solicitação ${s.regime ?? "LGPD"} de "${s.titular}" registrada (${s.tipo}).`);
-  };
-  const setStatusSolicitacao = (id: string, status: Solicitacao["status"], resposta?: string) => {
-    setSolicitacoes((l) => l.map((x) => (x.id === id ? { ...x, status, resposta: resposta ?? x.resposta } : x)));
-    registrar("lgpd", `Solicitação ${id.slice(0, 8)} movida para "${status}".`);
-  };
-  const toggleCheck = (id: string) => setChecklist((l) => l.map((c) => (c.id === id ? { ...c, feito: !c.feito } : c)));
-
-  /* ---------- GDPR ---------- */
-  const addGdprAtividade = (a: GdprAtividade) => {
-    setGdprAtividades((l) => [a, ...l]);
-    registrar("gdpr", `Operação "${a.nome}" adicionada ao ROPA (Art. 30).`);
-  };
-  const updateGdprAtividade = (a: GdprAtividade) => {
-    setGdprAtividades((l) => l.map((x) => (x.id === a.id ? a : x)));
-    registrar("gdpr", `Operação "${a.nome}" atualizada no ROPA.`);
-  };
-  const removeGdprAtividade = (id: string) => {
-    const a = gdprAtividades.find((x) => x.id === id);
-    setGdprAtividades((l) => l.filter((x) => x.id !== id));
-    registrar("gdpr", `Operação "${a?.nome ?? id}" removida do ROPA.`);
-  };
-  const addTransferencia = (t: Transferencia) => {
-    setTransferencias((l) => [...l, t]);
-    registrar("gdpr", `Transferência internacional para ${t.destino} registrada (${t.mecanismo}).`);
-  };
-  const removeTransferencia = (id: string) => {
-    const t = transferencias.find((x) => x.id === id);
-    setTransferencias((l) => l.filter((x) => x.id !== id));
-    registrar("gdpr", `Transferência para ${t?.destino ?? id} removida.`);
-  };
-  const toggleDpia = (id: string) => setDpiaChecks((d) => ({ ...d, [id]: !d[id] }));
-
-  /* ---------- ISO ---------- */
-  const setIso = (frameworkId: string, controlId: string, patch: Partial<ControleEstado>) => {
-    setIsoState((s) => ({
-      ...s,
-      [frameworkId]: { ...s[frameworkId], [controlId]: { ...(s[frameworkId]?.[controlId] ?? { estado: "nao" as EstadoIso }), ...patch, ts: new Date().toISOString().slice(0, 10) } },
-    }));
+  const toast = (texto: string, tom: ToastTom = "ok") => {
+    const id = seqToast++;
+    setToasts((l) => [...l, { id, texto, tom }]);
+    setTimeout(() => setToasts((l) => l.filter((t) => t.id !== id)), 4200);
   };
 
-  /* ---------- Cookies & consentimento ---------- */
-  const setBannerConfig = (patch: Partial<BannerConfig>) => setBannerConfigState((c) => ({ ...c, ...patch }));
-  const addCookieEventos = (evts: CookieEvento[]): number => {
-    let novos = 0;
-    setCookieEventos((l) => {
-      const ids = new Set(l.map((e) => e.id));
-      const add = evts.filter((e) => !ids.has(e.id));
-      novos = add.length;
-      return add.length ? [...add, ...l].slice(0, 400) : l;
-    });
-    return novos;
-  };
-  const limparCookieEventos = () => {
-    setCookieEventos([]);
-    registrar("sistema", "Eventos de consentimento de cookies limpos.");
-  };
-  const addCookie = (c: CookieItem) => {
-    setInventarioCookies((l) => (l.some((x) => x.nome === c.nome) ? l : [c, ...l]));
-  };
-  const addCookies = (cs: CookieItem[]) => {
-    setInventarioCookies((l) => {
-      const nomes = new Set(l.map((x) => x.nome));
-      return [...cs.filter((c) => !nomes.has(c.nome)), ...l];
-    });
-  };
-  const removeCookie = (id: string) => setInventarioCookies((l) => l.filter((x) => x.id !== id));
+  /* score de maturidade (checklist) */
+  const score = useMemo(() => {
+    const feitas = checklist.filter((c) => c.feito).length;
+    return Math.round((feitas / checklist.length) * 100);
+  }, [checklist]);
 
-  /* ---------- maturidade LGPD ---------- */
-  const { score, scoreFatores } = useMemo(() => {
-    const total = atividades.length || 1;
-    const fBase = atividades.filter((a) => a.baseLegalId).length / total;
-    const fRetencao = atividades.filter((a) => a.retencao && a.retencao !== "Definir prazo específico").length / total;
-    const alto = atividades.filter((a) => zonaRisco(a.probabilidade * a.impacto) === "alto" || zonaRisco(a.probabilidade * a.impacto) === "critico");
-    const fMedidas = alto.length ? alto.filter((a) => a.medidas.length >= 3).length / alto.length : 1;
-    const fCheck = checklist.length ? checklist.filter((c) => c.feito).length / checklist.length : 1;
-    const abertas = solicitacoes.filter((s) => s.status !== "concluida");
-    const fSolic = abertas.length ? abertas.filter((s) => diasDesde(s.data) <= PRAZO_LGPD_DIAS).length / abertas.length : 1;
-
-    const fatores = [
-      { label: "Base legal definida", pct: fBase, peso: 25 },
-      { label: "Retenção estabelecida", pct: fRetencao, peso: 15 },
-      { label: "Salvaguardas em alto risco", pct: fMedidas, peso: 20 },
-      { label: "Programa de conformidade", pct: fCheck, peso: 20 },
-      { label: "Solicitações no prazo", pct: fSolic, peso: 20 },
-    ];
-    const s = Math.round(fatores.reduce((acc, f) => acc + f.pct * f.peso, 0));
-    return { score: s, scoreFatores: fatores };
-  }, [atividades, checklist, solicitacoes]);
-
-  const reset = () => {
-    setAtividades(SEED_ATIVIDADES);
-    setSolicitacoes(SEED_SOLICITACOES);
-    setChecklist(SEED_CHECKLIST);
-    setGdprAtividades(SEED_GDPR_ATIVIDADES);
-    setTransferencias(SEED_TRANSFERENCIAS);
-    setDpiaChecks(SEED_DPIA);
-    setIsoState(SEED_ISO);
-    setBannerConfigState(SEED_BANNER);
-    setCookieEventos(SEED_EVENTOS);
-    setInventarioCookies(SEED_COOKIES);
-    registrar("sistema", "Dados de demonstração restaurados.");
-  };
-
-  const value: Store = {
+  const v: StoreCtx = {
+    storageKey,
+    limites,
     atividades,
+    addAtividade: (a) => setAtividades((l) => [a, ...l]),
+    updateAtividade: (a) => setAtividades((l) => l.map((x) => (x.id === a.id ? a : x))),
+    removeAtividade: (id) => setAtividades((l) => l.filter((x) => x.id !== id)),
     solicitacoes,
+    addSolicitacao: (s) => setSolicitacoes((l) => [s, ...l]),
+    setStatusSolicitacao: (id, status, resposta) => setSolicitacoes((l) => l.map((x) => (x.id === id ? { ...x, status, resposta: resposta ?? x.resposta } : x))),
     checklist,
-    addAtividade,
-    updateAtividade,
-    removeAtividade,
-    addSolicitacao,
-    setStatusSolicitacao,
-    toggleCheck,
+    toggleCheck: (id) => setChecklist((l) => l.map((x) => (x.id === id ? { ...x, feito: !x.feito } : x))),
+    score,
     gdprAtividades,
-    addGdprAtividade,
-    updateGdprAtividade,
-    removeGdprAtividade,
-    transferencias,
-    addTransferencia,
-    removeTransferencia,
-    dpiaChecks,
-    toggleDpia,
+    addGdprAtividade: (a) => setGdprAtividades((l) => [a, ...l]),
+    updateGdprAtividade: (a) => setGdprAtividades((l) => l.map((x) => (x.id === a.id ? a : x))),
+    removeGdprAtividade: (id) => setGdprAtividades((l) => l.filter((x) => x.id !== id)),
     iso,
-    setIso,
-    bannerConfig,
-    setBannerConfig,
-    cookieEventos,
-    addCookieEventos,
-    limparCookieEventos,
-    inventarioCookies,
-    addCookie,
-    addCookies,
-    removeCookie,
-    toasts,
+    setIso: (frameworkId, controlId, patch) =>
+      setIsoState((s) => ({
+        ...s,
+        [frameworkId]: {
+          ...s[frameworkId],
+          [controlId]: { ...(s[frameworkId]?.[controlId] ?? { estado: "nao" }), ...patch, ts: new Date().toISOString().slice(0, 10) },
+        },
+      })),
     auditoria,
     registrar,
-    score,
-    scoreFatores,
+    toasts,
     toast,
-    reset,
+    reset: () => {
+      setAtividades(SEED_ATIVIDADES);
+      setSolicitacoes(SEED_SOLICITACOES);
+      setChecklist(SEED_CHECKLIST);
+      setGdprAtividades(SEED_GDPR);
+      setIsoState(SEED_ISO);
+      registrar("sistema", "Dados de demonstração restaurados.");
+    },
   };
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={v}>{children}</Ctx.Provider>;
 }
 
 export function useStore() {

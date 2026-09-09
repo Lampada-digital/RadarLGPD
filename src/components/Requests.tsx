@@ -1,18 +1,17 @@
 import { useMemo, useState } from "react";
 import { useStore } from "../store";
-import { CANAIS, diasDesde, fmtData, prazoDe, TIPOS_SOLICITACAO, uid } from "../types";
-import type { Solicitacao, StatusSolicitacao } from "../types";
-import { TIPOS_DSAR_GDPR } from "../gdpr";
+import { CANAIS, TIPOS_SOLICITACAO, TIPOS_DSAR_GDPR, diasDesde, fmtData, prazoDe, uid } from "../domain";
+import type { Solicitacao, } from "../domain";
 import { Cabecalho, Campo, Ic, inputCls, Modal, Reveal } from "./ui";
 
-const STATUS_META: Record<StatusSolicitacao, { label: string; cls: string }> = {
+const STATUS_META = {
   aberta: { label: "Aberta", cls: "bg-paper-deep text-ink-soft" },
   em_andamento: { label: "Em andamento", cls: "bg-amber-soft text-ink" },
   concluida: { label: "Concluída", cls: "bg-moss/12 text-moss" },
-};
+} as const;
 
-export default function Requests() {
-  const { solicitacoes, addSolicitacao, setStatusSolicitacao, toast } = useStore();
+export default function Requests({ onUpgrade }: { onUpgrade?: () => void }) {
+  const { solicitacoes, addSolicitacao, setStatusSolicitacao, toast, registrar, limites } = useStore();
   const [filtro, setFiltro] = useState<"todos" | "LGPD" | "GDPR">("todos");
   const [form, setForm] = useState(false);
   const [respondendo, setRespondendo] = useState<string | null>(null);
@@ -20,35 +19,39 @@ export default function Requests() {
   const [nTitular, setNTitular] = useState("");
   const [nTipo, setNTipo] = useState(TIPOS_SOLICITACAO[0]);
   const [nCanal, setNCanal] = useState(CANAIS[0]);
-  const [nData, setNData] = useState(new Date().toISOString().slice(0, 10));
   const [nRegime, setNRegime] = useState<"LGPD" | "GDPR">("LGPD");
 
   const tipos = nRegime === "GDPR" ? TIPOS_DSAR_GDPR : TIPOS_SOLICITACAO;
 
-  const lista = useMemo(
-    () => solicitacoes.filter((s) => filtro === "todos" || (s.regime ?? "LGPD") === filtro),
-    [solicitacoes, filtro]
-  );
+  const lista = useMemo(() => solicitacoes.filter((s) => filtro === "todos" || (s.regime ?? "LGPD") === filtro), [solicitacoes, filtro]);
 
   const stats = useMemo(() => {
     const abertas = solicitacoes.filter((s) => s.status !== "concluida");
     return {
       abertas: abertas.length,
       vencidas: abertas.filter((s) => diasDesde(s.data) > prazoDe(s)).length,
-      noPrazo: abertas.filter((s) => diasDesde(s.data) <= prazoDe(s)).length,
     };
   }, [solicitacoes]);
 
-  const registrar = () => {
+  const abrirForm = () => {
+    if (!limites.podeCriar) {
+      toast("O trial é somente leitura. Assine um plano para registrar solicitações.", "warn");
+      onUpgrade?.();
+      return;
+    }
+    setForm(true);
+  };
+
+  const registrarNova = () => {
     if (!nTitular.trim()) {
       toast("Informe o nome do titular.", "warn");
       return;
     }
-    addSolicitacao({ id: uid(), titular: nTitular.trim(), tipo: nTipo, canal: nCanal, data: nData, status: "aberta", regime: nRegime });
-    toast(`Solicitação ${nRegime} registrada — prazo de ${prazoDe({ regime: nRegime })} dias corridos.`);
+    addSolicitacao({ id: uid(), titular: nTitular.trim(), tipo: nTipo, canal: nCanal, data: new Date().toISOString().slice(0, 10), status: "aberta", regime: nRegime });
+    registrar("titular", `Solicitação ${nRegime} de ${nTitular.trim()} registrada (prazo ${prazoDe({ regime: nRegime })}d).`);
+    toast(`Solicitação ${nRegime} registrada — prazo de ${prazoDe({ regime: nRegime })} dias.`);
     setForm(false);
     setNTitular("");
-    setNTipo(nRegime === "GDPR" ? TIPOS_DSAR_GDPR[0] : TIPOS_SOLICITACAO[0]);
   };
 
   const concluir = (id: string) => {
@@ -57,9 +60,10 @@ export default function Requests() {
       return;
     }
     setStatusSolicitacao(id, "concluida", resposta.trim());
+    registrar("titular", "Solicitação concluída com resposta registrada.");
+    toast("Solicitação concluída com resposta registrada.");
     setRespondendo(null);
     setResposta("");
-    toast("Solicitação concluída com resposta registrada.");
   };
 
   return (
@@ -67,28 +71,24 @@ export default function Requests() {
       <Cabecalho
         kicker="Direitos dos titulares · Arts. 18–19 LGPD · Arts. 15–22 GDPR"
         titulo="Fila de solicitações"
-        desc="Todo pedido do titular entra aqui com o prazo legal correndo: 15 dias (LGPD, art. 19) ou 1 mês (GDPR, art. 12). Responda e registre a tratativa para fins de accountability."
+        desc="Todo pedido do titular entra aqui com o prazo legal correndo: 15 dias (LGPD) ou 30 dias (GDPR). Responda e registre a tratativa para fins de accountability."
         acao={
-          <button onClick={() => setForm(true)} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2.5 text-[13px] font-bold text-lime shadow-sm transition hover:bg-pine-deep active:scale-[0.98]">
-            <Ic name="plus" size={14} sw={2.6} /> Nova solicitação
+          <button onClick={abrirForm} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2.5 text-[13px] font-bold text-lime shadow-sm transition hover:bg-pine-deep active:scale-[0.98]">
+            <Ic name={limites.podeCriar ? "plus" : "lock"} size={14} sw={2.6} /> Nova solicitação
           </button>
         }
       />
 
-      {/* métricas + filtro */}
       <Reveal>
         <div className="mb-4 flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-2">
-            {(["todos", "LGPD", "GDPR"] as const).map((f) => (
-              <button key={f} onClick={() => setFiltro(f)} className={`rounded-md border px-3.5 py-2 text-[12px] font-bold transition ${filtro === f ? "border-pine bg-pine text-lime" : "border-sand bg-cream text-ink-soft hover:border-moss"}`}>
-                {f === "todos" ? "Todos" : f}
-              </button>
-            ))}
-          </div>
+          {(["todos", "LGPD", "GDPR"] as const).map((f) => (
+            <button key={f} onClick={() => setFiltro(f)} className={`rounded-md border px-3.5 py-2 text-[12px] font-bold transition ${filtro === f ? "border-pine bg-pine text-lime" : "border-sand bg-cream text-ink-soft hover:border-moss"}`}>
+              {f === "todos" ? "Todos" : f}
+            </button>
+          ))}
           <div className="ml-auto flex flex-wrap items-center gap-2 text-[11.5px] font-bold">
             <span className="rounded-full bg-paper-deep px-2.5 py-1 text-ink-soft">{stats.abertas} em aberto</span>
             <span className={`rounded-full px-2.5 py-1 ${stats.vencidas ? "bg-rust text-cream" : "bg-moss/12 text-moss"}`}>{stats.vencidas} vencida(s)</span>
-            <span className="rounded-full bg-amber-soft px-2.5 py-1 text-ink">{stats.noPrazo} no prazo</span>
           </div>
         </div>
       </Reveal>
@@ -124,9 +124,7 @@ export default function Requests() {
                   {s.status !== "concluida" && (
                     <div className="w-36">
                       <div className="mb-1 flex justify-between text-[10px] font-bold">
-                        <span className={vencida ? "text-rust" : restante <= 5 ? "text-amber" : "text-ink-faint"}>
-                          {vencida ? `Vencida há ${Math.abs(restante)}d` : `${restante}d restantes`}
-                        </span>
+                        <span className={vencida ? "text-rust" : restante <= 5 ? "text-amber" : "text-ink-faint"}>{vencida ? `Vencida há ${Math.abs(restante)}d` : `${restante}d restantes`}</span>
                         <span className="text-ink-faint">de {prazo}d</span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-paper-deep">
@@ -148,7 +146,7 @@ export default function Requests() {
                 {respondendo === s.id && (
                   <div className="anim-pop mt-3 rounded-md border border-sand bg-paper p-3">
                     <Campo label="Resposta enviada ao titular" hint="fica registrada como evidência">
-                      <textarea className={`${inputCls} min-h-[64px] resize-y`} value={resposta} onChange={(e) => setResposta(e.target.value)} placeholder="Ex.: Dados exportados em JSON e link seguro enviado ao titular; cópias apagadas dos sistemas legados…" />
+                      <textarea className={`${inputCls} min-h-[64px] resize-y`} value={resposta} onChange={(e) => setResposta(e.target.value)} placeholder="Ex.: Dados exportados em JSON e link seguro enviado ao titular…" />
                     </Campo>
                     <div className="mt-2 flex justify-end gap-2">
                       <button onClick={() => setRespondendo(null)} className="rounded-md border border-sand px-3 py-1.5 text-[12px] font-semibold text-ink-soft">Cancelar</button>
@@ -181,8 +179,10 @@ export default function Requests() {
                 ))}
               </div>
             </Campo>
-            <Campo label="Data do recebimento">
-              <input type="date" className={inputCls} value={nData} onChange={(e) => setNData(e.target.value)} />
+            <Campo label="Canal">
+              <select className={inputCls} value={nCanal} onChange={(e) => setNCanal(e.target.value)}>
+                {CANAIS.map((t) => <option key={t}>{t}</option>)}
+              </select>
             </Campo>
           </div>
           <Campo label="Titular"><input className={inputCls} value={nTitular} onChange={(e) => setNTitular(e.target.value)} placeholder="Nome do titular" /></Campo>
@@ -191,14 +191,9 @@ export default function Requests() {
               {tipos.map((t) => <option key={t}>{t}</option>)}
             </select>
           </Campo>
-          <Campo label="Canal de recebimento">
-            <select className={inputCls} value={nCanal} onChange={(e) => setNCanal(e.target.value)}>
-              {CANAIS.map((t) => <option key={t}>{t}</option>)}
-            </select>
-          </Campo>
           <div className="flex items-center justify-between gap-3 border-t border-sand pt-4">
-            <p className="text-[11px] text-ink-faint">Prazo legal: <strong className="text-ink-soft">{prazoDe({ regime: nRegime })} dias</strong> ({nRegime === "GDPR" ? "Art. 12(3) GDPR" : "Art. 19, §2º, LGPD"})</p>
-            <button onClick={registrar} className="inline-flex items-center gap-2 rounded-md bg-pine px-5 py-2 text-[13px] font-bold text-lime transition hover:bg-pine-deep active:scale-[0.98]">
+            <p className="text-[11px] text-ink-faint">Prazo legal: <strong className="text-ink-soft">{prazoDe({ regime: nRegime })} dias</strong></p>
+            <button onClick={registrarNova} className="inline-flex items-center gap-2 rounded-md bg-pine px-5 py-2 text-[13px] font-bold text-lime transition hover:bg-pine-deep active:scale-[0.98]">
               <Ic name="check" size={14} sw={2.6} /> Registrar
             </button>
           </div>

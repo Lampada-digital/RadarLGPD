@@ -1,9 +1,7 @@
 import { useMemo } from "react";
 import { useStore } from "../store";
-import { TODAS_BASES, ZONA_META, diasDesde, fmtData, prazoDe, zonaRisco } from "../types";
-import { DADOS_GDPR } from "../gdpr";
-import { FRAMEWORKS, progressoFramework } from "../frameworks";
-import type { Page } from "../App";
+import { useAuth } from "../auth";
+import { TODAS_BASES, ZONA_META, zonaRisco, diasDesde, prazoDe, fmtData, FRAMEWORKS, progressoFramework } from "../domain";
 import { Ic, Reveal, Ring, useCountUp } from "./ui";
 
 function Stat({ label, valor, sufixo, detalhe, tom = "ink" }: { label: string; valor: number; sufixo?: string; detalhe: string; tom?: "ink" | "rust" | "moss" | "amber" | "azul" }) {
@@ -37,36 +35,19 @@ function Pilar({ label, valor, detalhe, cor }: { label: string; valor: number; d
   );
 }
 
-export default function Dashboard({ irPara }: { irPara: (p: Page) => void }) {
-  const { atividades, solicitacoes, checklist, gdprAtividades, transferencias, dpiaChecks, iso, score, toggleCheck, toast } = useStore();
+export default function Dashboard({ irPara }: { irPara: (p: string) => void }) {
+  const { atividades, solicitacoes, checklist, gdprAtividades, iso, score, toggleCheck, toast, limites } = useStore();
+  const { usuario } = useAuth();
 
   const lgpd = useMemo(() => {
-    const dados = new Set(atividades.flatMap((a) => a.dados));
-    const sensiveis = atividades.filter((a) => a.dados.some((d) => ["saude", "biometria", "religiao", "racial", "politico", "menor"].includes(d)));
     const zonas = { baixo: 0, moderado: 0, alto: 0, critico: 0 } as Record<string, number>;
     atividades.forEach((a) => zonas[zonaRisco(a.probabilidade * a.impacto)]++);
     const cont = new Map<string, number>();
     atividades.forEach((a) => cont.set(a.baseLegalId, (cont.get(a.baseLegalId) ?? 0) + 1));
-    const bases = [...cont.entries()]
-      .map(([id, n]) => ({ base: TODAS_BASES.find((b) => b.id === id), n }))
-      .filter((b) => b.base)
-      .sort((a, b) => b.n - a.n)
-      .slice(0, 5);
-    return { dados: dados.size, sensiveis: sensiveis.length, zonas, bases };
+    const bases = [...cont.entries()].map(([id, n]) => ({ base: TODAS_BASES.find((b) => b.id === id), n })).filter((b) => b.base).sort((a, b) => b.n - a.n).slice(0, 5);
+    const sensiveis = atividades.filter((a) => a.dados.some((d) => ["saude", "biometria", "religiao", "racial", "politico", "menor"].includes(d)));
+    return { zonas, bases, sensiveis: sensiveis.length };
   }, [atividades]);
-
-  const gdpr = useMemo(() => {
-    const especiais = gdprAtividades.filter((a) => a.dados.some((d) => DADOS_GDPR.find((x) => x.id === d)?.especial)).length;
-    const comRet = gdprAtividades.filter((a) => a.retencao.trim()).length;
-    const transf = gdprAtividades.filter((a) => a.transferencia);
-    const comMec = transf.filter((a) => a.mecanismoTransferencia).length;
-    const fRet = gdprAtividades.length ? comRet / gdprAtividades.length : 1;
-    const fMec = transf.length ? comMec / transf.length : 1;
-    const prontidao = Math.round(((fRet + fMec) / 2) * 100);
-    const criticas = transferencias.filter((t) => t.status !== "vigente").length;
-    const dpiaMarcados = Object.values(dpiaChecks).filter(Boolean).length;
-    return { especiais, prontidao, criticas, dpiaObrigatoria: dpiaMarcados >= 2 };
-  }, [gdprAtividades, transferencias, dpiaChecks]);
 
   const isoStats = useMemo(() => {
     let total = 0;
@@ -79,6 +60,14 @@ export default function Dashboard({ irPara }: { irPara: (p: Page) => void }) {
     });
     return { total, conformes, por, media: Math.round(por.reduce((acc, x) => acc + x.p.pct, 0) / FRAMEWORKS.length) };
   }, [iso]);
+
+  const prontidaoGdpr = useMemo(() => {
+    if (!gdprAtividades.length) return 0;
+    const comRet = gdprAtividades.filter((a) => a.retencao.trim()).length;
+    const transf = gdprAtividades.filter((a) => a.transferencia);
+    const comMec = transf.filter((a) => a.mecanismoTransferencia).length;
+    return Math.round(((comRet / gdprAtividades.length + (transf.length ? comMec / transf.length : 1)) / 2) * 100);
+  }, [gdprAtividades]);
 
   const abertas = solicitacoes.filter((s) => s.status !== "concluida");
   const pertoPrazo = abertas.filter((s) => diasDesde(s.data) >= prazoDe(s) - 5);
@@ -98,7 +87,7 @@ export default function Dashboard({ irPara }: { irPara: (p: Page) => void }) {
             <div className="max-w-xl">
               <p className="mb-2 inline-flex items-center gap-2 rounded-full border border-lime/30 bg-pine-deep/60 px-3 py-1 text-[10.5px] font-bold tracking-[0.18em] text-lime uppercase">
                 <span className="pulse-dot inline-block size-1.5 rounded-full bg-lime" />
-                Monitor ativo · LGPD 13.709/18 · GDPR (UE) 2016/679 · 7 normas ISO
+                Bem-vindo(a), {usuario?.nome.split(" ")[0]} · monitor ativo
               </p>
               <h1 className="font-display text-[30px] leading-[1.05] font-extrabold tracking-tight sm:text-[38px]">
                 Privacidade e compliance <span className="text-lime">sob o mesmo radar.</span>
@@ -108,78 +97,47 @@ export default function Dashboard({ irPara }: { irPara: (p: Page) => void }) {
               </p>
               <div className="mt-4 flex flex-wrap gap-2.5">
                 <button onClick={() => irPara("assistente")} className="group inline-flex items-center gap-2 rounded-md bg-lime px-4 py-2.5 text-[13px] font-bold text-pine transition hover:bg-lime-soft active:scale-[0.98]">
-                  <Ic name="spark" size={15} sw={2.2} />
-                  Classificar com IA
+                  <Ic name="spark" size={15} sw={2.2} /> Classificar com IA
                   <Ic name="arrow" size={14} className="transition-transform group-hover:translate-x-0.5" />
                 </button>
                 <button onClick={() => irPara("iso")} className="inline-flex items-center gap-2 rounded-md border border-cream/25 px-4 py-2.5 text-[13px] font-semibold text-cream transition hover:border-lime/60 hover:text-lime active:scale-[0.98]">
-                  <Ic name="layers" size={14} />
-                  Programas ISO
+                  <Ic name="layers" size={14} /> Frameworks ISO
                 </button>
               </div>
             </div>
             <div className="flex min-w-[280px] flex-col gap-2.5">
-              <Pilar label="Maturidade LGPD" valor={score} detalhe="Índice composto por 5 fatores ponderados" cor="var(--color-lime)" />
-              <Pilar label="Prontidão GDPR" valor={gdpr.prontidao} detalhe="Retenção + mecanismos de transferência (Cap. V)" cor="#8fb8f0" />
+              <Pilar label="Maturidade LGPD" valor={score} detalhe="Índice composto pelo programa de conformidade" cor="var(--color-lime)" />
+              <Pilar label="Prontidão GDPR" valor={prontidaoGdpr} detalhe="Retenção + mecanismos de transferência (Cap. V)" cor="#8fb8f0" />
               <Pilar label="Conformidade ISO" valor={isoStats.media} detalhe={`${isoStats.conformes}/${isoStats.total} controles conformes (média)`} cor="#e8b64c" />
             </div>
           </div>
         </div>
       </Reveal>
 
+      {/* aviso de trial */}
+      {limites.trial && (
+        <Reveal>
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber/60 bg-amber-soft/50 px-5 py-3.5">
+            <span className="grid size-9 shrink-0 place-items-center rounded-md bg-amber text-pine"><Ic name="clock" size={17} sw={2.2} /></span>
+            <p className="min-w-0 flex-1 text-[12.5px] leading-snug text-ink-soft">
+              <strong className="text-ink">Você está no modo visualização (trial).</strong> Registros são somente leitura. Assine um plano para criar atividades, usar a IA e liberar os frameworks.
+            </p>
+            <button onClick={() => irPara("planos")} className="inline-flex items-center gap-1.5 rounded-md bg-pine px-4 py-2 text-[12px] font-extrabold text-lime transition hover:bg-pine-deep active:scale-[0.98]">
+              Ver planos <Ic name="arrow" size={12} />
+            </button>
+          </div>
+        </Reveal>
+      )}
+
       {/* estatísticas */}
       <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
         <Reveal delay={40}><Stat label="Atividades LGPD" valor={atividades.length} detalhe={`${atividades.filter((a) => a.origem === "ia").length} classificadas pela IA · ${lgpd.sensiveis} com dado sensível`} /></Reveal>
-        <Reveal delay={90}><Stat label="Operações GDPR (Art. 30)" valor={gdprAtividades.length} detalhe={`${gdpr.especiais} tratam categorias especiais (Art. 9)`} tom="azul" /></Reveal>
-        <Reveal delay={140}><Stat label="Controles conformes" valor={isoStats.conformes} sufixo={`/${isoStats.total}`} detalhe="Implementados/verificados nos 12 frameworks e certificações" tom="moss" /></Reveal>
-        <Reveal delay={190}>
-          <Stat label="Solicitações em aberto" valor={abertas.length} detalhe={pertoPrazo.length ? `${pertoPrazo.length} a ≤5 dias do prazo legal` : "Todas dentro do prazo (15d LGPD · 30d GDPR)"} tom={pertoPrazo.length ? "amber" : "ink"} />
-        </Reveal>
+        <Reveal delay={90}><Stat label="Operações GDPR (Art. 30)" valor={gdprAtividades.length} detalhe="Registros no ROPA europeu" tom="azul" /></Reveal>
+        <Reveal delay={140}><Stat label="Controles conformes" valor={isoStats.conformes} sufixo={`/${isoStats.total}`} detalhe="Implementados/verificados nos frameworks" tom="moss" /></Reveal>
+        <Reveal delay={190}><Stat label="Solicitações em aberto" valor={abertas.length} detalhe={pertoPrazo.length ? `${pertoPrazo.length} a ≤5 dias do prazo legal` : "Todas dentro do prazo (15d LGPD · 30d GDPR)"} tom={pertoPrazo.length ? "amber" : "ink"} /></Reveal>
       </div>
 
-      {/* acesso rápido às áreas dedicadas */}
-      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-        {(
-          [
-            { id: "soc2", pagina: "soc2" as Page, icone: "shield", desc: "Trust Services Criteria · exame Type II" },
-            { id: "pcidss", pagina: "pcidss" as Page, icone: "lock", desc: "12 requisitos de dados do cartão" },
-            { id: "ai-gov", pagina: "ai-gov" as Page, icone: "spark", desc: "ISO/IEC 42001 + EU AI Act" },
-            { id: "cookies", pagina: "cookies" as Page, icone: "filter", desc: "ePrivacy + GDPR · CMP e consentimento" },
-          ] as const
-        ).map((a, i) => {
-          const fw = FRAMEWORKS.find((f) => f.id === a.id);
-          const p = isoStats.por.find((x) => x.fw.id === a.id)?.p;
-          if (!fw || !p) return null;
-          return (
-            <Reveal key={a.id} delay={i * 60}>
-              <button
-                onClick={() => irPara(a.pagina)}
-                className="group block w-full overflow-hidden rounded-lg border border-sand bg-cream text-left transition-all duration-200 hover:-translate-y-1 hover:border-ink/25 hover:shadow-[0_16px_32px_-18px_rgba(19,46,38,0.4)]"
-              >
-                <span className="block h-1.5 w-full transition-all duration-300 group-hover:h-2.5" style={{ background: fw.cor }} />
-                <span className="block p-4">
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="grid size-8 place-items-center rounded-md" style={{ background: `${fw.cor}1a`, color: fw.cor }}>
-                      <Ic name={a.icone} size={16} sw={2} />
-                    </span>
-                    <span className="font-display text-[19px] leading-none font-extrabold" style={{ color: fw.cor }}>{p.pct}%</span>
-                  </span>
-                  <span className="font-display mt-2.5 block text-[14.5px] leading-snug font-bold text-ink">{fw.codigo}</span>
-                  <span className="mt-1 block text-[11px] leading-snug text-ink-soft">{a.desc}</span>
-                  <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-paper-deep">
-                    <span className="bar-grow block h-full rounded-full" style={{ width: `${Math.max(p.pct, 2)}%`, background: fw.cor, animationDelay: `${i * 80 + 150}ms` }} />
-                  </span>
-                  <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-ink-faint transition-colors group-hover:text-ink">
-                    Abrir área dedicada <Ic name="arrow" size={11} className="transition-transform group-hover:translate-x-0.5" />
-                  </span>
-                </span>
-              </button>
-            </Reveal>
-          );
-        })}
-      </div>
-
-      {/* linha 2 */}
+      {/* linha 2: bases / risco / programas ISO */}
       <div className="grid gap-3.5 lg:grid-cols-3">
         <Reveal>
           <div className="flex h-full flex-col rounded-lg border border-sand bg-cream p-5">
@@ -202,7 +160,7 @@ export default function Dashboard({ irPara }: { irPara: (p: Page) => void }) {
               ))}
             </div>
             <button onClick={() => irPara("lgpd-bases")} className="group mt-auto inline-flex items-center gap-1.5 pt-4 text-[12px] font-bold text-moss transition hover:text-pine">
-              Ver as 18 bases legais <Ic name="arrow" size={12} className="transition-transform group-hover:translate-x-0.5" />
+              Ver as 17 bases legais <Ic name="arrow" size={12} className="transition-transform group-hover:translate-x-0.5" />
             </button>
           </div>
         </Reveal>
@@ -245,7 +203,7 @@ export default function Dashboard({ irPara }: { irPara: (p: Page) => void }) {
         <Reveal delay={160}>
           <div className="flex h-full flex-col rounded-lg border border-sand bg-cream p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-[15px] font-bold text-ink">Frameworks & Certificações</h2>
+              <h2 className="font-display text-[15px] font-bold text-ink">Frameworks & certificações</h2>
               <Ic name="layers" size={16} className="text-moss" />
             </div>
             <ul className="space-y-2.5">
@@ -268,30 +226,27 @@ export default function Dashboard({ irPara }: { irPara: (p: Page) => void }) {
         </Reveal>
       </div>
 
-      {/* linha 3 */}
+      {/* linha 3: checklist + solicitações */}
       <div className="grid gap-3.5 lg:grid-cols-3">
-        <Reveal>
+        <Reveal className="lg:col-span-2">
           <div className="h-full rounded-lg border border-sand bg-cream p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h2 className="font-display text-[15px] font-bold text-ink">Programa LGPD</h2>
-                <p className="text-[11.5px] text-ink-soft">{feitas}/{checklist.length} controles</p>
+                <h2 className="font-display text-[15px] font-bold text-ink">Programa de conformidade LGPD</h2>
+                <p className="text-[11.5px] text-ink-soft">{feitas}/{checklist.length} controles implementados</p>
               </div>
-              <span className="font-display text-[13px] font-bold text-moss">{Math.round((feitas / checklist.length) * 100)}%</span>
+              <span className="font-display text-[13px] font-bold text-moss">{score}%</span>
             </div>
-            <ul className="grid gap-1.5">
-              {checklist.slice(0, 6).map((c) => (
-                <li key={c.id}>
-                  <button
-                    onClick={() => { toggleCheck(c.id); toast(c.feito ? "Controle marcado como pendente." : "Controle implementado — maturidade atualizada.", c.feito ? "warn" : "ok"); }}
-                    className={`flex w-full items-start gap-2.5 rounded-md border px-3 py-2 text-left transition-all duration-150 ${c.feito ? "border-moss/35 bg-moss/8" : "border-sand bg-paper hover:border-moss/50"}`}
-                  >
-                    <span className={`mt-0.5 grid size-4.5 shrink-0 place-items-center rounded-sm border transition ${c.feito ? "border-moss bg-moss text-cream" : "border-sand bg-cream"}`}>
-                      {c.feito && <Ic name="check" size={10} sw={3} />}
+            <ul className="grid gap-1.5 sm:grid-cols-2">
+              {checklist.map((ck) => (
+                <li key={ck.id}>
+                  <button onClick={() => { toggleCheck(ck.id); toast(ck.feito ? "Controle marcado como pendente." : "Controle implementado — maturidade atualizada.", ck.feito ? "warn" : "ok"); }} className={`flex w-full items-start gap-2.5 rounded-md border px-3 py-2 text-left transition-all duration-150 ${ck.feito ? "border-moss/35 bg-moss/8" : "border-sand bg-paper hover:border-moss/50"}`}>
+                    <span className={`mt-0.5 grid size-4.5 shrink-0 place-items-center rounded-sm border transition ${ck.feito ? "border-moss bg-moss text-cream" : "border-sand bg-cream"}`}>
+                      {ck.feito && <Ic name="check" size={10} sw={3} />}
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate text-[12px] leading-snug font-semibold text-ink">{c.label}</span>
-                      <span className="text-[10px] font-bold tracking-wide text-moss uppercase">{c.artigo}</span>
+                      <span className="block truncate text-[12px] leading-snug font-semibold text-ink">{ck.label}</span>
+                      <span className="text-[10px] font-bold tracking-wide text-moss uppercase">{ck.artigo}</span>
                     </span>
                   </button>
                 </li>
@@ -300,33 +255,7 @@ export default function Dashboard({ irPara }: { irPara: (p: Page) => void }) {
           </div>
         </Reveal>
 
-        <Reveal delay={80}>
-          <div className="flex h-full flex-col rounded-lg border border-sand bg-cream p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-[15px] font-bold text-ink">Alertas GDPR</h2>
-              <Ic name="globe" size={16} className="text-[#1f4e8f]" />
-            </div>
-            <ul className="space-y-2">
-              <li className={`rounded-md border px-3.5 py-3 ${gdpr.especiais ? "border-rust/40 bg-rust-soft/40" : "border-sand bg-paper"}`}>
-                <p className="text-[12px] font-bold text-ink">{gdpr.especiais} operação(ões) com Art. 9</p>
-                <p className="text-[10.5px] text-ink-soft">Condição específica e medidas reforçadas exigidas.</p>
-              </li>
-              <li className={`rounded-md border px-3.5 py-3 ${gdpr.criticas ? "border-amber/50 bg-amber-soft/50" : "border-sand bg-paper"}`}>
-                <p className="text-[12px] font-bold text-ink">{gdpr.criticas} transferência(s) fora do EEE pendentes</p>
-                <p className="text-[10.5px] text-ink-soft">SCCs/TIA a concluir no Capítulo V.</p>
-              </li>
-              <li className={`rounded-md border px-3.5 py-3 ${gdpr.dpiaObrigatoria ? "border-rust/40 bg-rust-soft/40" : "border-sand bg-paper"}`}>
-                <p className="text-[12px] font-bold text-ink">{gdpr.dpiaObrigatoria ? "DPIA obrigatória em avaliação" : "DPIA não exigida no momento"}</p>
-                <p className="text-[10.5px] text-ink-soft">Critérios EDPB (WP248) aplicados à análise atual.</p>
-              </li>
-            </ul>
-            <button onClick={() => irPara("gdpr-ropa")} className="group mt-auto inline-flex items-center gap-1.5 pt-4 text-[12px] font-bold text-[#1f4e8f] transition hover:text-pine">
-              Abrir ROPA (Art. 30) <Ic name="arrow" size={12} className="transition-transform group-hover:translate-x-0.5" />
-            </button>
-          </div>
-        </Reveal>
-
-        <Reveal delay={160}>
+        <Reveal delay={100}>
           <div className="flex h-full flex-col rounded-lg border border-sand bg-cream p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-display text-[15px] font-bold text-ink">Direitos dos titulares</h2>
@@ -365,15 +294,6 @@ export default function Dashboard({ irPara }: { irPara: (p: Page) => void }) {
           </div>
         </Reveal>
       </div>
-
-      <Reveal>
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-sand bg-paper/60 px-5 py-3.5">
-          <p className="text-[11.5px] text-ink-faint">
-            “O controlador deve manter registro das operações de tratamento.” — <strong className="text-ink-soft">Art. 37, LGPD · Art. 30, GDPR</strong>
-          </p>
-          <p className="text-[11px] font-semibold tracking-wide text-ink-faint uppercase">Dados de demonstração · edite livremente</p>
-        </div>
-      </Reveal>
     </div>
   );
 }

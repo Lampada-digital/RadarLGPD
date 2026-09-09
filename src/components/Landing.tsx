@@ -1,89 +1,20 @@
-import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
-import { analisar } from "../ai";
-import type { AnaliseIA } from "../ai";
-import { CATEGORIAS_DADOS, ZONA_META } from "../types";
-import { PRECO_MENSAL, TRIAL_DIAS } from "../auth";
+import { useEffect, useMemo, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
+import { TODAS_BASES } from "../domain";
+import { analisarLGPD } from "../ai";
 import { Ic, Reveal, useCountUp } from "./ui";
 
-/* ============ dados do site ============ */
+const NORMAS = ["LGPD · Lei 13.709/18", "GDPR · UE 2016/679", "ISO/IEC 27001", "ISO/IEC 27701", "ISO/IEC 27002", "SOC 2 Type II", "PCI-DSS v4.0"];
 
-const NORMAS = [
-  "LGPD · Lei 13.709", "GDPR · UE 2016/679", "ISO/IEC 27001", "ISO/IEC 27002", "ISO/IEC 27017",
-  "ISO/IEC 27701", "ISO 31000", "ISO 37001", "ISO 37301", "SOC 2 Type II", "PCI-DSS v4.0", "EU AI Act", "ePrivacy",
-];
-
-const DETECCOES = [
-  { t: "Folha de pagamento", d: "Art. 7º, II · risco 6 · 680 titulares", cor: "var(--color-moss)" },
-  { t: "Telemedicina interna", d: "Art. 11, II, “f” · risco 15 · RIPD emitido", cor: "var(--color-rust)" },
-  { t: "CRM e prospecção", d: "Art. 7º, IX · risco 9 · 12.400 leads", cor: "var(--color-amber)" },
-  { t: "ROPA — EU Payroll", d: "Art. 30 GDPR · base 6(1)(b) · SCCs vigentes", cor: "#8fb8f0" },
-  { t: "ISO 27001 · A.8.13", d: "Backup verificado · evidência anexada", cor: "var(--color-lime)" },
-];
-
-const PILARES = [
-  {
-    id: "lgpd", ic: "scale", cor: "var(--color-moss)", tag: "Brasil",
-    nome: "LGPD — Lei Geral de Proteção de Dados",
-    desc: "Do registro de operações à fila de titulares, tudo que a ANPD espera encontrar numa fiscalização.",
-    bullets: ["Registro de tratamento (art. 37) com base legal e retenção", "Matriz de risco 5×5 e RIPD (art. 38)", "Fila de titulares com prazo de 15 dias (art. 19)", "As 18 bases legais com uso real mapeado"],
-  },
-  {
-    id: "gdpr", ic: "globe", cor: "#8fb8f0", tag: "União Europeia",
-    nome: "GDPR — Regulamento Geral (UE)",
-    desc: "ROPA do Art. 30, bases do Art. 6/9, DPIA e transferências internacionais num só lugar.",
-    bullets: ["ROPA (Art. 30) com finalidades e destinatários", "Bases de licitude Art. 6 e condições Art. 9", "DPIA guiada pelos critérios WP248", "Transferências (Cap. V) com SCCs e TIA"],
-  },
-  {
-    id: "iso", ic: "brain", cor: "var(--color-lime)", tag: "Certificações",
-    nome: "11 frameworks & normas ISO",
-    desc: "Programas de implementação completos, do SGSI ao antissuborno, com evidência por controle.",
-    bullets: ["ISO 27001/27002/27017/27701 · 31000/37001/37301", "SOC 2 Type II (Trust Services Criteria)", "PCI-DSS v4.0 (12 requisitos)", "Pacote documental em PDF pronto p/ auditor"],
-  },
-  {
-    id: "ia", ic: "spark", cor: "var(--color-amber)", tag: "Inteligência Artificial",
-    nome: "IA de conformidade nativa",
-    desc: "Descreva a operação em português e a IA classifica dados, base legal, risco e salvaguardas.",
-    bullets: ["Classificação de operações em segundos", "Recomendação de base legal fundamentada", "Planos de implementação gerados por gaps", "Roda 100% no navegador — nada sai dali"],
-  },
-  {
-    id: "cookies", ic: "filter", cor: "#c9a0e8", tag: "Sites dos clientes",
-    nome: "Gestão de Cookies com API",
-    desc: "Banner pronto para o site do cliente + API que alimenta o mapeamento automaticamente.",
-    bullets: ["Banner com paridade (aceitar = recusar)", "API serverless recebe consentimentos", "IA classifica e mapeia sozinha", "Inventário e política em PDF"],
-  },
-];
-
-const DEPOIMENTOS = [
-  { n: "Renata K.", c: "DPO · Fintech (240 func.)", t: "Migramos 3 planilhas caóticas para o Radar em uma tarde. Na auditoria da ISO 27701, o pacote de políticas em PDF foi elogiado pelo auditor.", off: "lg:mt-0" },
-  { n: "Caio M.", c: "Head de Compliance · E-commerce", t: "O prazo de 15 dias das solicitações de titulares era meu maior risco. Hoje a fila anda sozinha e eu só olho o que está a 5 dias de vencer.", off: "lg:mt-10" },
-  { n: "Lívia S.", c: "CISO · Saúde digital", t: "A IA classificou 200 operações de tratamento em minutos. O que levaria semanas de consultoria saiu com base legal e risco já sugeridos.", off: "lg:mt-4" },
-];
-
-const FAQ = [
-  { q: "Preciso de conhecimento jurídico para usar?", a: "Não. O sistema guia cada etapa com a base legal sugerida pela IA e explica o porquê. Você revisa e aprova — o conhecimento jurídico fica embutido nos modelos." },
-  { q: "Meus dados ficam seguros?", a: "Sim. As credenciais usam hash SHA-256 com salt, há bloqueio anti força-bruta, expiração de sessão e trilha de auditoria. Os dados do mapeamento ficam isolados por organização." },
-  { q: "Funciona para GDPR e LGPD ao mesmo tempo?", a: "Sim. São áreas dedicadas com prazos e bases próprias (15 dias na LGPD, 30 no GDPR), e o relatório consolidado cobre as duas jurisdições." },
-  { q: "Posso cancelar quando quiser?", a: "Pode. O plano é mensal sem fidelidade. Seus dados podem ser exportados em JSON, CSV e PDF antes de cancelar." },
-  { q: "Como funciona o trial de 7 dias?", a: `Você cria a conta com e-mail corporativo e usa tudo sem cartão por ${TRIAL_DIAS} dias. Ao final, basta ativar a assinatura para continuar — nada é perdido.` },
-];
-
-/* ============ componentes ============ */
-
+/* ---------------- navegação ---------------- */
 function Nav({ onAcessar }: { onAcessar: () => void }) {
   const [rolou, setRolou] = useState(false);
   useEffect(() => {
-    const h = () => setRolou(window.scrollY > 24);
-    window.addEventListener("scroll", h);
-    return () => window.removeEventListener("scroll", h);
+    const f = () => setRolou(window.scrollY > 24);
+    f();
+    window.addEventListener("scroll", f, { passive: true });
+    return () => window.removeEventListener("scroll", f);
   }, []);
-  const links = [
-    { h: "#plataforma", l: "Plataforma" },
-    { h: "#demonstracao", l: "Demonstração" },
-    { h: "#precos", l: "Preços" },
-    { h: "#seguranca", l: "Segurança" },
-    { h: "#faq", l: "FAQ" },
-  ];
   return (
     <header className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${rolou ? "border-b border-pine-line bg-pine/95 shadow-lg backdrop-blur-md" : "bg-transparent"}`}>
       <div className="mx-auto flex max-w-[1160px] items-center justify-between px-5 py-3.5">
@@ -95,20 +26,27 @@ function Nav({ onAcessar }: { onAcessar: () => void }) {
           <span className="font-display text-[17px] font-extrabold tracking-tight text-cream">Radar<span className="text-lime">GRC</span></span>
         </a>
         <nav className="hidden items-center gap-7 lg:flex">
-          {links.map((x) => (
-            <a key={x.h} href={x.h} className="text-[13px] font-semibold text-cream/70 transition hover:text-lime">{x.l}</a>
+          {[["#plataforma", "Plataforma"], ["#demonstracao", "Demonstração"], ["#precos", "Planos"], ["#seguranca", "Segurança"], ["#faq", "FAQ"]].map(([h, l]) => (
+            <a key={h} href={h} className="text-[13px] font-semibold text-cream/70 transition hover:text-lime">{l}</a>
           ))}
         </nav>
-        <div className="flex items-center gap-2.5">
-          <button onClick={onAcessar} className="hidden rounded-md border border-cream/25 px-4 py-2 text-[13px] font-bold text-cream transition hover:border-lime/60 hover:text-lime sm:block">Entrar</button>
-          <button onClick={onAcessar} className="inline-flex items-center gap-2 rounded-md bg-lime px-4 py-2 text-[13px] font-extrabold text-pine transition hover:bg-lime-soft active:scale-[0.98]">
-            Testar {TRIAL_DIAS} dias grátis <Ic name="arrow" size={13} />
-          </button>
-        </div>
+        <button onClick={onAcessar} className="inline-flex items-center gap-2 rounded-md bg-lime px-4 py-2 text-[13px] font-extrabold text-pine transition hover:bg-lime-soft active:scale-[0.97]">
+          Acessar sistema <Ic name="arrow" size={14} sw={2.4} />
+        </button>
       </div>
     </header>
   );
 }
+
+/* ---------------- abertura: o radar em ação ---------------- */
+const DETECCOES = [
+  { t: "Folha de pagamento", d: "dados sensíveis · Art. 11", z: "alto" },
+  { t: "CFTV na portaria", d: "imagem · legítimo interesse", z: "médio" },
+  { t: "CRM de vendas", d: "12.400 titulares mapeados", z: "baixo" },
+  { t: "Telemedicina", d: "saúde · RIPD obrigatório", z: "alto" },
+  { t: "Newsletter marketing", d: "consentimento · opt-in", z: "baixo" },
+];
+const COR_ZONA: Record<string, string> = { alto: "text-rust", médio: "text-amber", baixo: "text-lime" };
 
 function RadarHero({ onAcessar }: { onAcessar: () => void }) {
   const [tick, setTick] = useState(0);
@@ -123,59 +61,58 @@ function RadarHero({ onAcessar }: { onAcessar: () => void }) {
       <div className="pointer-events-none absolute -top-24 -right-24 size-[380px] rounded-full border border-lime/15" />
       <div className="mx-auto grid max-w-[1160px] items-center gap-12 px-5 lg:grid-cols-[1.05fr_0.95fr]">
         <div>
-          <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-lime/30 bg-pine-deep/60 px-3.5 py-1.5 text-[10.5px] font-bold tracking-[0.16em] text-lime uppercase">
-            <span className="pulse-dot size-1.5 rounded-full bg-lime" /> LGPD · GDPR · 11 frameworks ISO · IA nativa
+          <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-lime/30 bg-pine-deep/60 px-3.5 py-1.5 text-[10.5px] font-bold tracking-[0.18em] text-lime uppercase">
+            <span className="pulse-dot inline-block size-1.5 rounded-full bg-lime" /> LGPD · GDPR · ISO · com IA
           </p>
-          <h1 className="font-display text-[42px] leading-[1.03] font-extrabold tracking-tight sm:text-[58px]">
+          <h1 className="font-display text-[40px] leading-[1.04] font-extrabold tracking-tight sm:text-[54px]">
             Todo dado pessoal da sua empresa, <span className="text-lime">no radar.</span>
           </h1>
           <p className="mt-5 max-w-xl text-[15.5px] leading-relaxed text-cream/70">
-            Mapeamento de dados, bases legais, matriz de risco, programas ISO e direitos dos titulares —
-            com uma IA que classifica operações em segundos e gera os documentos que o auditor pede.
+            Mapeamento de dados, registro de operações, matriz de risco e programas ISO em um só painel — com uma IA que classifica cada tratamento e aponta a base legal certa.
           </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3.5">
-            <button onClick={onAcessar} className="group inline-flex items-center gap-2 rounded-md bg-lime px-6 py-3.5 text-[14.5px] font-extrabold text-pine shadow-[0_16px_36px_-14px_rgba(201,233,79,0.5)] transition hover:bg-lime-soft active:scale-[0.98]">
-              Começar {TRIAL_DIAS} dias grátis <Ic name="arrow" size={15} className="transition-transform group-hover:translate-x-1" />
+          <div className="mt-7 flex flex-wrap gap-3">
+            <button onClick={onAcessar} className="group inline-flex items-center gap-2 rounded-md bg-lime px-6 py-3 text-[14px] font-extrabold text-pine shadow-[0_16px_36px_-14px_rgba(201,233,79,0.55)] transition hover:bg-lime-soft active:scale-[0.98]">
+              Testar 7 dias grátis <Ic name="arrow" size={15} className="transition-transform group-hover:translate-x-1" />
             </button>
-            <a href="#demonstracao" className="inline-flex items-center gap-2 rounded-md border border-cream/25 px-6 py-3.5 text-[14px] font-bold text-cream transition hover:border-lime/60 hover:text-lime">
+            <a href="#demonstracao" className="inline-flex items-center gap-2 rounded-md border border-cream/25 px-6 py-3 text-[14px] font-bold text-cream transition hover:border-lime/60 hover:text-lime">
               <Ic name="spark" size={15} sw={2.2} /> Ver a IA em ação
             </a>
           </div>
-          <p className="mt-4 text-[12px] text-cream/45">Sem cartão de crédito · e-mail corporativo · cancele quando quiser</p>
+          <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-[12px] font-semibold text-cream/50">
+            <span className="inline-flex items-center gap-1.5"><Ic name="check" size={13} sw={2.6} className="text-lime" /> Sem cartão de crédito</span>
+            <span className="inline-flex items-center gap-1.5"><Ic name="check" size={13} sw={2.6} className="text-lime" /> Dados 100% no navegador</span>
+            <span className="inline-flex items-center gap-1.5"><Ic name="check" size={13} sw={2.6} className="text-lime" /> E-mail corporativo</span>
+          </div>
         </div>
 
-        {/* radar */}
-        <div className="relative mx-auto w-full max-w-[420px]">
-          <div className="relative aspect-square">
-            <div className="absolute inset-0 rounded-full border border-lime/15" />
-            <div className="absolute inset-[12%] rounded-full border border-lime/20" />
-            <div className="absolute inset-[24%] rounded-full border border-lime/25" />
-            <div className="absolute inset-[36%] rounded-full border border-lime/30" />
-            <div className="radar-sweep absolute inset-[6%] rounded-full" style={{ background: "conic-gradient(from 0deg, rgba(201,233,79,0.30), transparent 70deg)" }} />
+        {/* o radar */}
+        <div className="relative mx-auto w-full max-w-[440px]">
+          <div className="relative aspect-square rounded-full border border-lime/25 bg-pine-deep/60 shadow-[0_40px_90px_-30px_rgba(0,0,0,0.7)]">
+            <div className="absolute inset-[12%] rounded-full border border-lime/15" />
+            <div className="absolute inset-[26%] rounded-full border border-lime/12" />
+            <div className="absolute inset-[40%] rounded-full border border-lime/10" />
+            <div className="radar-sweep absolute inset-0 rounded-full" style={{ background: "conic-gradient(from 0deg, rgba(201,233,79,0.3), transparent 70deg)" }} />
+            {/* blips */}
             {[
-              { top: "22%", left: "64%", cor: "var(--color-rust)" },
-              { top: "48%", left: "30%", cor: "var(--color-amber)" },
-              { top: "66%", left: "58%", cor: "var(--color-moss)" },
-              { top: "36%", left: "44%", cor: "var(--color-lime)" },
+              { top: "22%", left: "60%", cor: "bg-rust" },
+              { top: "38%", left: "28%", cor: "bg-amber" },
+              { top: "58%", left: "70%", cor: "bg-lime" },
+              { top: "70%", left: "38%", cor: "bg-lime" },
+              { top: "30%", left: "74%", cor: "bg-amber" },
             ].map((b, i) => (
-              <span key={i} className="pulse-dot absolute size-2.5 rounded-full" style={{ top: b.top, left: b.left, background: b.cor }} />
+              <span key={i} className={`pulse-dot absolute size-2.5 rounded-full ${b.cor}`} style={{ top: b.top, left: b.left, animationDelay: `${i * 0.5}s` }} />
             ))}
             <div className="absolute inset-0 grid place-items-center">
-              <span className="grid size-14 place-items-center rounded-full border border-lime/40 bg-pine-deep">
-                <Ic name="radar" size={26} className="text-lime" sw={1.8} />
-              </span>
+              <span className="grid size-3 place-items-center rounded-full bg-lime" />
             </div>
           </div>
-          {/* card de detecção */}
-          <div key={det.t} className="anim-pop absolute -bottom-4 left-1/2 w-[86%] -translate-x-1/2 rounded-lg border border-pine-line bg-pine-deep/95 p-3.5 shadow-2xl backdrop-blur">
-            <div className="flex items-center gap-3">
-              <span className="pulse-dot size-2 shrink-0 rounded-full" style={{ background: det.cor }} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-bold text-cream">{det.t}</p>
-                <p className="truncate text-[10.5px] text-cream/50">{det.d}</p>
-              </div>
-              <span className="rounded-sm bg-lime/15 px-2 py-0.5 text-[9px] font-extrabold tracking-widest text-lime uppercase">IA</span>
+          {/* card de detecção ao vivo */}
+          <div key={tick} className="anim-slide-left absolute -bottom-5 left-1/2 flex w-[86%] -translate-x-1/2 items-center justify-between gap-3 rounded-lg border border-pine-line bg-pine px-4 py-3 shadow-xl">
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-bold text-cream">{det.t}</p>
+              <p className="truncate text-[11px] text-cream/55">{det.d}</p>
             </div>
+            <span className={`font-display shrink-0 text-[12px] font-extrabold uppercase ${COR_ZONA[det.z]}`}>{det.z}</span>
           </div>
         </div>
       </div>
@@ -183,6 +120,7 @@ function RadarHero({ onAcessar }: { onAcessar: () => void }) {
   );
 }
 
+/* ---------------- letreiro de normas ---------------- */
 function Marquee() {
   return (
     <div className="marquee overflow-hidden border-y border-pine-line bg-pine-deep py-3.5">
@@ -197,6 +135,7 @@ function Marquee() {
   );
 }
 
+/* ---------------- o custo de não mapear ---------------- */
 function Stat({ v, suf, l, cor = "text-ink" }: { v: number; suf?: string; l: string; cor?: string }) {
   const n = useCountUp(v, 1100);
   return (
@@ -213,38 +152,32 @@ function Problema() {
       <div className="mx-auto max-w-[1160px] px-5">
         <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.1fr]">
           <Reveal>
-            <p className="mb-2 text-[11px] font-bold tracking-[0.16em] text-rust uppercase">O custo de não mapear</p>
-            <h2 className="font-display text-[34px] leading-tight font-extrabold tracking-tight text-ink sm:text-[42px]">
-              A multa chega <span className="text-rust">antes</span> do mapa de dados.
+            <p className="mb-2 text-[11px] font-bold tracking-[0.16em] text-rust uppercase">O risco é real e mensurável</p>
+            <h2 className="font-display text-[32px] leading-tight font-extrabold tracking-tight text-ink sm:text-[40px]">
+              Quem não mapeia, <span className="text-rust">não sabe o que expõe.</span>
             </h2>
             <p className="mt-4 text-[14.5px] leading-relaxed text-ink-soft">
-              Sem um registro de operações, qualquer incidente vira um problema jurídico. As sanções não são
-              hipotéticas — e elas escalam com o faturamento.
+              A multa é só a parte visível. Sem um registro das operações de tratamento, você não responde à ANPD, não atende o titular no prazo e não prova conformidade em auditoria.
             </p>
-            <div className="mt-7 grid grid-cols-2 gap-6">
-              <Stat v={50} suf="M" l="Multa máxima LGPD por infração (R$)" cor="text-rust" />
-              <Stat v={4} suf="%" l="Do faturamento global (GDPR)" cor="text-rust" />
-              <Stat v={2} suf="%" l="Do faturamento por infração (LGPD)" cor="text-amber" />
-              <Stat v={72} suf="h" l="Prazo p/ notificar violação (GDPR)" cor="text-ink" />
-            </div>
+            <ul className="mt-6 space-y-3">
+              {[
+                ["Multas de até 2% do faturamento", "teto de R$ 50 milhões por infração na LGPD"],
+                ["72 horas para notificar incidentes", "prazo do GDPR junto à autoridade europeia"],
+                ["15 dias para responder titulares", "art. 19 da LGPD, sob pena de sanção"],
+              ].map(([t, d]) => (
+                <li key={t} className="flex gap-3">
+                  <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-sm bg-rust/10 text-rust"><Ic name="alert" size={12} sw={2.4} /></span>
+                  <p className="text-[13.5px] leading-snug text-ink-soft"><strong className="text-ink">{t}</strong> — {d}.</p>
+                </li>
+              ))}
+            </ul>
           </Reveal>
           <Reveal delay={120}>
-            <div className="space-y-3.5">
-              {[
-                { t: "“Acho que temos os dados dos clientes em umas 3 planilhas”", d: "Sem inventário, não há como responder à ANPD nem aos titulares — e o prazo de 15 dias não espera." },
-                { t: "“O jurídico pediu a base legal de cada operação”", d: "Levantar consentimento, contrato e legítimo interesse operação por operação leva semanas de consultoria." },
-                { t: "“Vamos ser auditados na ISO 27001 mês que vem”", d: "Sem evidência por controle e políticas formalizadas, a não conformidade é quase certa." },
-              ].map((x, i) => (
-                <div key={i} className="group flex gap-4 rounded-lg border border-sand bg-cream p-4.5 transition hover:-translate-y-0.5 hover:border-rust/40 hover:shadow-[0_14px_30px_-18px_rgba(189,79,38,0.4)]">
-                  <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-md bg-rust-soft text-rust transition group-hover:bg-rust group-hover:text-cream">
-                    <Ic name="alert" size={16} sw={2.2} />
-                  </span>
-                  <div>
-                    <p className="text-[13.5px] font-bold text-ink">{x.t}</p>
-                    <p className="mt-1 text-[12px] leading-snug text-ink-soft">{x.d}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="grid grid-cols-2 gap-x-8 gap-y-9 rounded-xl border border-sand bg-cream p-8 shadow-[0_24px_60px_-30px_rgba(19,46,38,0.35)] sm:grid-cols-2">
+              <Stat v={50} suf=" mi" l="teto de multa LGPD (R$)" cor="text-rust" />
+              <Stat v={4} suf="%" l="do faturamento global (GDPR)" cor="text-amber" />
+              <Stat v={72} suf="h" l="para notificar um incidente" />
+              <Stat v={15} suf="d" l="para responder ao titular" cor="text-moss" />
             </div>
           </Reveal>
         </div>
@@ -252,6 +185,14 @@ function Problema() {
     </section>
   );
 }
+
+/* ---------------- plataforma ---------------- */
+const PILARES = [
+  { id: "lgpd", ic: "layers", cor: "#2e6b54", t: "LGPD · Brasil", d: "Registro das operações (art. 37), bases legais dos arts. 7º e 11, matriz de risco 5×5 e fila de titulares com prazo de 15 dias.", pts: ["Registro art. 37", "Matriz de risco", "Titulares"] },
+  { id: "gdpr", ic: "globe", cor: "#1f4e8f", t: "GDPR · União Europeia", d: "ROPA do Art. 30 com bases do Art. 6 e condições do Art. 9, transferência internacional e prazo de 30 dias.", pts: ["ROPA Art. 30", "Art. 6 e 9", "Transferências"] },
+  { id: "iso", ic: "brain", cor: "#7a4f8f", t: "ISO & Certificações", d: "Programas de implementação da ISO 27001, 27701 e 27002, SOC 2 Type II e PCI-DSS, controle a controle.", pts: ["27001 · 27701 · 27002", "SOC 2", "PCI-DSS"] },
+  { id: "ia", ic: "spark", cor: "#c98a1f", t: "IA de classificação", d: "Descreva a operação e a IA identifica os dados, recomenda a base legal, define retenção e calcula o risco.", pts: ["Base legal", "Retenção", "Risco"] },
+];
 
 function Plataforma() {
   const [ativo, setAtivo] = useState("lgpd");
@@ -261,54 +202,48 @@ function Plataforma() {
       <div className="mx-auto max-w-[1160px] px-5">
         <Reveal>
           <p className="mb-2 text-center text-[11px] font-bold tracking-[0.16em] text-moss uppercase">Uma plataforma, todas as frentes</p>
-          <h2 className="font-display mx-auto max-w-2xl text-center text-[34px] leading-tight font-extrabold tracking-tight text-ink sm:text-[42px]">
-            Pare de colecionar planilhas. <span className="text-moss">Tenha um sistema.</span>
+          <h2 className="font-display mx-auto max-w-2xl text-center text-[32px] leading-tight font-extrabold tracking-tight text-ink sm:text-[40px]">
+            Do inventário de dados ao <span style={{ color: p.cor }}>documento de auditoria.</span>
           </h2>
         </Reveal>
-
-        <div className="mt-12 grid gap-8 lg:grid-cols-[280px_1fr]">
-          {/* abas verticais */}
-          <div className="flex flex-row gap-2 overflow-x-auto lg:flex-col">
-            {PILARES.map((x) => (
+        <div className="mt-12 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+          {/* seletor vertical */}
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+            {PILARES.map((pl) => (
               <button
-                key={x.id}
-                onClick={() => setAtivo(x.id)}
-                className={`flex shrink-0 items-center gap-3 rounded-lg border px-4 py-3.5 text-left transition-all duration-200 lg:w-full ${
-                  ativo === x.id ? "border-pine bg-pine shadow-md" : "border-sand bg-paper hover:border-moss/40 hover:bg-cream"
-                }`}
+                key={pl.id}
+                onClick={() => setAtivo(pl.id)}
+                className={`group flex items-center gap-4 rounded-lg border px-5 py-4 text-left transition-all duration-200 ${ativo === pl.id ? "border-ink bg-pine shadow-lg" : "border-sand bg-cream hover:border-moss/40 hover:-translate-y-0.5"}`}
               >
-                <span className={`grid size-8 shrink-0 place-items-center rounded-md ${ativo === x.id ? "bg-pine-deep" : "bg-paper-deep"}`} style={{ color: x.cor }}>
-                  <Ic name={x.ic} size={16} sw={2} />
+                <span className="grid size-11 shrink-0 place-items-center rounded-md transition" style={{ background: `${pl.cor}1a`, color: pl.cor }}>
+                  <Ic name={pl.ic} size={22} sw={1.9} />
                 </span>
                 <span>
-                  <span className={`block text-[13px] font-bold ${ativo === x.id ? "text-cream" : "text-ink"}`}>{x.nome.split("—")[0]}</span>
-                  <span className={`text-[10.5px] font-semibold uppercase tracking-wide ${ativo === x.id ? "text-lime" : "text-ink-faint"}`}>{x.tag}</span>
+                  <span className={`font-display block text-[15px] font-bold ${ativo === pl.id ? "text-cream" : "text-ink"}`}>{pl.t}</span>
+                  <span className={`block text-[11.5px] ${ativo === pl.id ? "text-cream/60" : "text-ink-soft"}`}>{pl.pts.join(" · ")}</span>
                 </span>
+                <Ic name="arrow" size={16} className={`ml-auto shrink-0 transition-all ${ativo === pl.id ? "text-lime" : "text-sand group-hover:translate-x-1 group-hover:text-moss"}`} />
               </button>
             ))}
           </div>
-
-          {/* painel */}
-          <div key={p.id} className="anim-rise relative overflow-hidden rounded-xl border border-sand bg-paper p-7 lg:p-9">
-            <span className="absolute top-0 left-0 h-1.5 w-full" style={{ background: p.cor }} />
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-bold tracking-[0.14em] uppercase" style={{ color: p.cor }}>{p.tag}</p>
-                <h3 className="font-display mt-1 text-[24px] font-extrabold text-ink">{p.nome}</h3>
+          {/* painel de detalhe */}
+          <div key={ativo} className="anim-pop flex flex-col justify-between rounded-xl border border-pine-line bg-pine p-8 text-cream shadow-[0_30px_70px_-30px_rgba(19,46,38,0.6)]">
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="grid size-12 place-items-center rounded-lg border border-lime/30 bg-pine-deep" style={{ color: p.cor }}>
+                  <Ic name={p.ic} size={24} sw={1.9} />
+                </span>
+                <h3 className="font-display text-[24px] font-extrabold">{p.t}</h3>
               </div>
-              <span className="grid size-12 shrink-0 place-items-center rounded-lg" style={{ background: `${p.cor}1f`, color: p.cor }}>
-                <Ic name={p.ic} size={24} sw={1.8} />
-              </span>
+              <p className="mt-5 text-[15px] leading-relaxed text-cream/75">{p.d}</p>
             </div>
-            <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-ink-soft">{p.desc}</p>
-            <ul className="mt-6 grid gap-3 sm:grid-cols-2">
-              {p.bullets.map((b) => (
-                <li key={b} className="flex items-start gap-2.5 rounded-md border border-sand bg-cream px-3.5 py-3 text-[13px] leading-snug font-semibold text-ink">
-                  <Ic name="check" size={14} sw={3} className="mt-0.5 shrink-0 text-moss" />
-                  {b}
-                </li>
+            <div className="mt-8 flex flex-wrap gap-2">
+              {p.pts.map((pt) => (
+                <span key={pt} className="inline-flex items-center gap-1.5 rounded-full border border-cream/20 bg-pine-deep/70 px-3.5 py-1.5 text-[12px] font-bold text-cream/80">
+                  <Ic name="check" size={12} sw={2.8} className="text-lime" /> {pt}
+                </span>
               ))}
-            </ul>
+            </div>
           </div>
         </div>
       </div>
@@ -316,213 +251,192 @@ function Plataforma() {
   );
 }
 
+/* ---------------- demonstração interativa da IA ---------------- */
+const EXEMPLOS = [
+  "Processar a folha de pagamento dos funcionários com dados de saúde e salário",
+  "Enviar newsletter de marketing para clientes com e-mail e nome",
+  "Gravar imagens de CFTV na portaria do prédio",
+];
+
 function DemoIa() {
-  const exemplos = [
-    "Processar a folha de pagamento mensal dos funcionários",
-    "Enviar newsletter de marketing para clientes cadastrados",
-    "Coletar dados de saúde para plano de assistência médica",
-    "Gravar imagens de CFTV nas instalações da empresa",
-  ];
-  const [texto, setTexto] = useState(exemplos[0]);
-  const [analisando, setAnalisando] = useState(false);
-  const [r, setR] = useState<AnaliseIA | null>(null);
-  const timer = useRef<number | null>(null);
-
-  const rodar = (t: string) => {
-    setTexto(t);
-    setAnalisando(true);
-    setR(null);
-    if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => {
-      setR(analisar(t));
-      setAnalisando(false);
-    }, 850);
-  };
-
-  useEffect(() => {
-    rodar(exemplos[0]);
-    return () => { if (timer.current) window.clearTimeout(timer.current); };
-  }, []);
-
-  const zona = r ? ZONA_META[r.zona] : null;
-
+  const [txt, setTxt] = useState(EXEMPLOS[0]);
+  const r = useMemo(() => (txt.trim() ? analisarLGPD(txt) : null), [txt]);
+  const base = r ? TODAS_BASES.find((b) => b.id === r.baseRecomendada) : null;
   return (
     <section id="demonstracao" className="rail-texture bg-pine py-20 text-cream">
       <div className="mx-auto max-w-[1160px] px-5">
         <Reveal>
           <p className="mb-2 text-center text-[11px] font-bold tracking-[0.16em] text-lime uppercase">Experimente agora — sem cadastro</p>
-          <h2 className="font-display mx-auto max-w-2xl text-center text-[34px] leading-tight font-extrabold tracking-tight sm:text-[42px]">
-            Descreva uma operação. <span className="text-lime">A IA faz o resto.</span>
+          <h2 className="font-display mx-auto max-w-2xl text-center text-[32px] leading-tight font-extrabold tracking-tight sm:text-[40px]">
+            A IA classifica a operação <span className="text-lime">enquanto você descreve.</span>
           </h2>
         </Reveal>
-
-        <Reveal delay={120}>
-          <div className="mx-auto mt-10 max-w-[860px] overflow-hidden rounded-xl border border-pine-line bg-pine-deep shadow-2xl">
-            <div className="flex items-center gap-2 border-b border-pine-line bg-pine px-4 py-3">
-              <span className="flex gap-1.5"><span className="size-2.5 rounded-full bg-rust/80" /><span className="size-2.5 rounded-full bg-amber/80" /><span className="size-2.5 rounded-full bg-moss/80" /></span>
-              <span className="ml-2 text-[11.5px] font-bold tracking-wide text-cream/50">Radar GRC — Assistente de IA</span>
-            </div>
-            <div className="p-6">
-              <div className="relative">
+        <div className="mt-12 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          {/* terminal */}
+          <Reveal>
+            <div className="overflow-hidden rounded-xl border border-pine-line bg-pine-deep shadow-2xl">
+              <div className="flex items-center gap-2 border-b border-pine-line bg-pine px-4 py-3">
+                <span className="size-2.5 rounded-full bg-rust/80" /><span className="size-2.5 rounded-full bg-amber/80" /><span className="size-2.5 rounded-full bg-moss/80" />
+                <span className="ml-2 text-[11px] font-bold tracking-wide text-cream/50">radar-grc · assistente</span>
+              </div>
+              <div className="p-5">
+                <p className="mb-3 text-[11px] font-bold tracking-[0.14em] text-lime uppercase">Descreva uma operação de tratamento</p>
                 <textarea
-                  value={texto}
-                  onChange={(e) => rodar(e.target.value)}
-                  rows={2}
-                  className="w-full resize-none rounded-lg border border-pine-line bg-pine p-4 pr-24 text-[14px] leading-relaxed text-cream outline-none placeholder:text-cream/30 focus:border-lime/60"
-                  placeholder="Ex.: Processar a folha de pagamento…"
+                  value={txt}
+                  onChange={(e) => setTxt(e.target.value)}
+                  rows={4}
+                  className="w-full resize-none rounded-lg border border-pine-line bg-pine p-4 text-[13.5px] leading-relaxed text-cream outline-none transition placeholder:text-cream/30 focus:border-lime/60"
+                  placeholder="Ex.: armazenar currículos de candidatos com nome, e-mail e telefone…"
                 />
-                <span className="absolute right-3 bottom-3 inline-flex items-center gap-1.5 rounded-md bg-lime px-3 py-1.5 text-[11.5px] font-extrabold text-pine">
-                  <Ic name="spark" size={13} sw={2.4} /> IA
-                </span>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {exemplos.map((e) => (
-                  <button key={e} onClick={() => rodar(e)} className={`rounded-full border px-3.5 py-1.5 text-[11.5px] font-semibold transition ${texto === e ? "border-lime bg-lime/15 text-lime" : "border-pine-line text-cream/55 hover:border-lime/50 hover:text-lime"}`}>
-                    {e.split(" ").slice(0, 4).join(" ")}…
-                  </button>
-                ))}
-              </div>
-
-              <div className="relative mt-5 min-h-[230px]">
-                {analisando && (
-                  <div className="absolute inset-0 grid place-items-center">
-                    <div className="text-center">
-                      <span className="mx-auto block size-9 animate-spin rounded-full border-2 border-lime/25 border-t-lime" />
-                      <p className="caret mt-3 text-[13px] font-bold text-lime">Analisando operação</p>
-                    </div>
-                  </div>
-                )}
-                {!analisando && r && zona && (
-                  <div className="anim-rise grid gap-4 md:grid-cols-3">
-                    <div className="rounded-lg border border-pine-line bg-pine p-4">
-                      <p className="text-[10px] font-bold tracking-[0.14em] text-cream/45 uppercase">Dados identificados</p>
-                      <div className="mt-2.5 flex flex-wrap gap-1.5">
-                        {r.dados.map((d) => (
-                          <span key={d} className={`rounded-md px-2 py-1 text-[11px] font-bold ${r.dadosSensiveis.includes(d) ? "bg-rust/20 text-[#f0b39a]" : "bg-pine-deep text-lime"}`}>
-                            {CATEGORIAS_DADOS.find((c) => c.id === d)?.label ?? d}
-                          </span>
-                        ))}
-                      </div>
-                      {r.dadosSensiveis.length > 0 && <p className="mt-2.5 flex items-center gap-1.5 text-[10.5px] font-bold text-[#f0b39a]"><Ic name="alert" size={11} sw={2.4} /> {r.dadosSensiveis.length} dado(s) sensível(is) — Art. 11</p>}
-                    </div>
-                    <div className="rounded-lg border border-pine-line bg-pine p-4">
-                      <p className="text-[10px] font-bold tracking-[0.14em] text-cream/45 uppercase">Base legal sugerida</p>
-                      <p className="mt-2 text-[13px] font-extrabold text-lime">{r.bases[0]?.inciso} — {r.bases[0]?.titulo}</p>
-                      <p className="mt-1.5 text-[11px] leading-snug text-cream/50">{r.bases[0]?.rationale}</p>
-                    </div>
-                    <div className="rounded-lg border border-pine-line bg-pine p-4">
-                      <p className="text-[10px] font-bold tracking-[0.14em] text-cream/45 uppercase">Risco & medidas</p>
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="rounded-md px-2.5 py-1 text-[11.5px] font-extrabold" style={{ background: zona.bg, color: zona.fg }}>{zona.label} · {r.score}/25</span>
-                        <span className="text-[11px] font-bold text-cream/45">{r.confianca}% conf.</span>
-                      </div>
-                      <p className="mt-2.5 text-[11px] leading-snug text-cream/50">{r.medidas.slice(0, 3).join(" · ")}</p>
-                    </div>
-                  </div>
-                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {EXEMPLOS.map((e) => (
+                    <button key={e} onClick={() => setTxt(e)} className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${txt === e ? "border-lime bg-lime/15 text-lime" : "border-cream/20 text-cream/60 hover:border-lime/50 hover:text-lime"}`}>
+                      {e.length > 34 ? e.slice(0, 34) + "…" : e}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-function Precos({ onAcessar }: { onAcessar: () => void }) {
-  const incluso = [
-    "LGPD + GDPR completos", "11 frameworks & certificações ISO", "IA de conformidade ilimitada",
-    "Documentos e políticas em PDF", "Usuários e organizações ilimitados", "Gestão de Cookies com API",
-    "Trilha de auditoria e segurança", "Exportações JSON / CSV / PDF",
-  ];
-  return (
-    <section id="precos" className="bg-paper py-20">
-      <div className="mx-auto max-w-[1160px] px-5">
-        <Reveal>
-          <p className="mb-2 text-center text-[11px] font-bold tracking-[0.16em] text-moss uppercase">Preço único, sem surpresa</p>
-          <h2 className="font-display mx-auto max-w-2xl text-center text-[34px] leading-tight font-extrabold tracking-tight text-ink sm:text-[42px]">
-            Menos que <span className="text-moss">uma hora</span> de consultoria.
-          </h2>
-        </Reveal>
-
-        <div className="mx-auto mt-12 grid max-w-[880px] overflow-hidden rounded-2xl border border-pine-line shadow-[0_30px_70px_-30px_rgba(12,31,24,0.5)] lg:grid-cols-[1.1fr_0.9fr]">
-          {/* card preço */}
-          <div className="rail-texture relative bg-pine p-8 text-cream lg:p-10">
-            <span className="rounded-full bg-lime px-3 py-1 text-[10px] font-extrabold tracking-[0.14em] text-pine uppercase">Plano Completo</span>
-            <p className="mt-6 flex items-end gap-2">
-              <span className="font-display text-[64px] leading-none font-extrabold text-lime">{PRECO_MENSAL}</span>
-              <span className="pb-2 text-[14px] font-semibold text-cream/60">/mês</span>
-            </p>
-            <p className="mt-2 text-[13px] text-cream/65">Primeiros <strong className="text-lime">{TRIAL_DIAS} dias grátis</strong> · sem cartão · cancele quando quiser</p>
-            <button onClick={onAcessar} className="group mt-7 inline-flex w-full items-center justify-center gap-2 rounded-md bg-lime py-3.5 text-[15px] font-extrabold text-pine transition hover:bg-lime-soft active:scale-[0.98]">
-              Começar agora <Ic name="arrow" size={16} className="transition-transform group-hover:translate-x-1" />
-            </button>
-            <p className="mt-3 text-center text-[11px] text-cream/40">Ativação imediata após o trial</p>
-          </div>
-          {/* o que inclui */}
-          <div className="bg-cream p-8 lg:p-10">
-            <p className="font-display text-[16px] font-extrabold text-ink">Tudo incluído</p>
-            <ul className="mt-5 space-y-2.5">
-              {incluso.map((x) => (
-                <li key={x} className="flex items-center gap-2.5 text-[13px] font-semibold text-ink-soft">
-                  <span className="grid size-5 shrink-0 place-items-center rounded-full bg-moss/15 text-moss"><Ic name="check" size={11} sw={3} /></span>
-                  {x}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-6 border-t border-sand pt-4 text-[11.5px] leading-snug text-ink-faint">
-              Precisa de white-label, SSO ou implantação dedicada? <a href="#contato" className="font-bold text-moss hover:underline">Fale conosco</a> — fazemos sob consulta.
-            </p>
-          </div>
+          </Reveal>
+          {/* resultado */}
+          <Reveal delay={100}>
+            <div className="rounded-xl border border-pine-line bg-pine-deep/70 p-6">
+              {r ? (
+                <div key={txt} className="anim-rise space-y-4">
+                  <div>
+                    <p className="mb-2 text-[10.5px] font-bold tracking-[0.16em] text-cream/45 uppercase">Dados identificados · {r.dados.length}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {r.dados.map((d) => (
+                        <span key={d} className="rounded-md bg-lime/15 px-2.5 py-1 text-[11.5px] font-bold text-lime capitalize">{d}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-1.5 text-[10.5px] font-bold tracking-[0.16em] text-cream/45 uppercase">Base legal recomendada</p>
+                    <p className="text-[14px] font-bold text-cream">{base ? `${base.inciso} — ${base.titulo}` : "—"}</p>
+                    <p className="mt-1 text-[11.5px] leading-snug text-cream/55">{r.bases[0]?.rationale}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg border border-pine-line bg-pine p-3">
+                      <p className="text-[10px] font-bold tracking-[0.14em] text-cream/45 uppercase">Retenção</p>
+                      <p className="mt-1 text-[12.5px] font-bold text-cream">{r.retencao}</p>
+                    </div>
+                    <div className="rounded-lg border border-pine-line bg-pine p-3">
+                      <p className="text-[10px] font-bold tracking-[0.14em] text-cream/45 uppercase">Risco</p>
+                      <p className={`mt-1 text-[12.5px] font-extrabold ${r.score >= 12 ? "text-rust" : r.score >= 6 ? "text-amber" : "text-lime"}`}>{r.score}/25</p>
+                    </div>
+                  </div>
+                  {r.alertas.length > 0 && (
+                    <div className="rounded-lg border border-amber/40 bg-amber/10 p-3">
+                      <p className="flex items-center gap-1.5 text-[11.5px] font-bold text-amber"><Ic name="alert" size={13} sw={2.4} /> Atenção</p>
+                      <p className="mt-1 text-[11.5px] leading-snug text-cream/70">{r.alertas[0]}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="py-10 text-center text-[13px] text-cream/50">Descreva uma operação para ver a análise…</p>
+              )}
+            </div>
+          </Reveal>
         </div>
       </div>
     </section>
   );
 }
 
+/* ---------------- planos ---------------- */
+const PLANOS = [
+  { n: "Standard", p: "R$ 79,00", d: "Privacidade essencial para começar.", f: ["LGPD ilimitado (art. 37)", "GDPR ilimitado (ROPA art. 30)", "Matriz de risco em tempo real", "Fila de titulares", "Até 3 usuários"], cor: "#2f7f74", destaque: false },
+  { n: "Business", p: "R$ 149,00", d: "Frameworks, IA e documentos de auditoria.", f: ["Tudo do Standard", "ISO 27001 · 27701 · 27002", "SOC 2 + PCI-DSS", "Assistente de IA ilimitado", "Políticas em PDF", "Até 10 usuários"], cor: "#2e6b54", destaque: true },
+  { n: "Completo", p: "R$ 249,00", d: "Tudo, sem nenhum limite.", f: ["Tudo do Business", "Governança avançada", "Usuários ilimitados", "Suporte prioritário", "Onboarding assistido"], cor: "#c98a1f", destaque: false },
+];
+
+function Precos({ onAcessar }: { onAcessar: () => void }) {
+  return (
+    <section id="precos" className="bg-paper py-20">
+      <div className="mx-auto max-w-[1160px] px-5">
+        <Reveal>
+          <p className="mb-2 text-center text-[11px] font-bold tracking-[0.16em] text-moss uppercase">Preço fixo mensal, sem surpresa</p>
+          <h2 className="font-display mx-auto max-w-2xl text-center text-[32px] leading-tight font-extrabold tracking-tight text-ink sm:text-[40px]">
+            Comece grátis por 7 dias. <span className="text-moss">Evolua quando fizer sentido.</span>
+          </h2>
+        </Reveal>
+        <div className="mt-12 grid gap-6 lg:grid-cols-3">
+          {PLANOS.map((pl, i) => (
+            <Reveal key={pl.n} delay={i * 90}>
+              <div className={`relative flex h-full flex-col rounded-xl border p-7 transition-all duration-200 hover:-translate-y-1.5 ${pl.destaque ? "border-lime bg-pine text-cream shadow-[0_36px_80px_-30px_rgba(19,46,38,0.65)]" : "border-sand bg-cream text-ink hover:border-moss/50 hover:shadow-[0_24px_50px_-28px_rgba(19,46,38,0.4)]"}`}>
+                {pl.destaque && (
+                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-lime px-4 py-1 text-[10px] font-extrabold tracking-[0.14em] text-pine uppercase shadow">Mais vendido</span>
+                )}
+                <p className="text-[11px] font-extrabold tracking-[0.16em] uppercase" style={{ color: pl.destaque ? "#c9e94f" : pl.cor }}>{pl.n}</p>
+                <p className="font-display mt-3 text-[40px] leading-none font-extrabold">{pl.p}<span className={`ml-1 text-[14px] font-bold ${pl.destaque ? "text-cream/55" : "text-ink-faint"}`}>/mês</span></p>
+                <p className={`mt-2 text-[12.5px] ${pl.destaque ? "text-cream/65" : "text-ink-soft"}`}>{pl.d}</p>
+                <ul className="mt-6 flex-1 space-y-2.5">
+                  {pl.f.map((f) => (
+                    <li key={f} className={`flex gap-2.5 text-[13px] ${pl.destaque ? "text-cream/85" : "text-ink-soft"}`}>
+                      <Ic name="check" size={15} sw={2.6} className={`mt-0.5 shrink-0 ${pl.destaque ? "text-lime" : "text-moss"}`} /> {f}
+                    </li>
+                  ))}
+                </ul>
+                <button onClick={onAcessar} className={`mt-7 inline-flex w-full items-center justify-center gap-2 rounded-md py-2.5 text-[13.5px] font-extrabold transition active:scale-[0.98] ${pl.destaque ? "bg-lime text-pine hover:bg-lime-soft" : "border border-ink/15 bg-paper text-ink hover:border-moss hover:text-moss"}`}>
+                  {pl.destaque ? "Assinar Business" : `Começar ${pl.n}`}
+                </button>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+        <p className="mt-8 text-center text-[12px] text-ink-faint">Trial de 7 dias em modo visualização · ativação dentro do sistema · cancele quando quiser</p>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- segurança ---------------- */
 function Seguranca() {
   const itens = [
-    { ic: "shield", t: "Senhas SHA-256 + salt", d: "Nunca em texto puro, via Web Crypto." },
-    { ic: "lock", t: "Anti força-bruta", d: "Bloqueio progressivo de tentativas." },
-    { ic: "eye", t: "Camada anticópia", d: "Bloqueia inspeção e clonagem do sistema." },
-    { ic: "doc", t: "Trilha de auditoria", d: "Cada ação registrada e exportável." },
+    { ic: "lock", t: "Somente e-mail corporativo", d: "Bloqueio de provedores gratuitos no acesso." },
+    { ic: "key", t: "Senha forte + bloqueio", d: "Hash SHA-256 com salt e trava anti força-bruta." },
+    { ic: "shield", t: "Trilha de auditoria", d: "Cada ação registrada e exportável." },
+    { ic: "eye", t: "Proteção anticópia", d: "Bloqueio de inspeção e clonagem da interface." },
   ];
   return (
     <section id="seguranca" className="bg-cream py-20">
       <div className="mx-auto max-w-[1160px] px-5">
-        <div className="grid items-center gap-10 lg:grid-cols-2">
+        <div className="grid items-center gap-12 lg:grid-cols-2">
           <Reveal>
             <p className="mb-2 text-[11px] font-bold tracking-[0.16em] text-moss uppercase">Segurança de ponta a ponta</p>
-            <h2 className="font-display text-[34px] leading-tight font-extrabold tracking-tight text-ink sm:text-[40px]">
-              Um GRC que <span className="text-moss">pratica</span> o que vende.
+            <h2 className="font-display text-[32px] leading-tight font-extrabold tracking-tight text-ink sm:text-[40px]">
+              Feito para quem <span className="text-moss">cobra conformidade.</span>
             </h2>
             <p className="mt-4 text-[14.5px] leading-relaxed text-ink-soft">
-              O Radar GRC aplica as mesmas salvaguardas que ajuda você a implementar: criptografia, controle de
-              acesso por organização, expiração de sessão e proteção contra cópia do próprio sistema.
+              Um sistema de governança precisa ser, ele mesmo, um exemplo de segurança. Acesso restrito a e-mail corporativo, credenciais com hash forte, trilha de auditoria completa e uma camada anticópia que desincentiva a clonagem da interface.
             </p>
-            <div className="mt-7 grid gap-3 sm:grid-cols-2">
-              {itens.map((x) => (
-                <div key={x.t} className="group flex gap-3 rounded-lg border border-sand bg-paper p-4 transition hover:border-moss/50 hover:shadow-[0_12px_26px_-16px_rgba(19,46,38,0.4)]">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-md bg-pine text-lime transition group-hover:scale-110"><Ic name={x.ic} size={17} sw={2} /></span>
-                  <div><p className="text-[13px] font-bold text-ink">{x.t}</p><p className="text-[11.5px] text-ink-soft">{x.d}</p></div>
+            <div className="mt-7 grid grid-cols-2 gap-4">
+              {itens.map((it) => (
+                <div key={it.t} className="group rounded-lg border border-sand bg-paper p-4 transition hover:-translate-y-0.5 hover:border-moss/50">
+                  <span className="grid size-9 place-items-center rounded-md bg-moss/10 text-moss transition group-hover:bg-pine group-hover:text-lime"><Ic name={it.ic} size={18} sw={2} /></span>
+                  <p className="mt-2.5 text-[13px] font-bold text-ink">{it.t}</p>
+                  <p className="mt-0.5 text-[11.5px] leading-snug text-ink-soft">{it.d}</p>
                 </div>
               ))}
             </div>
           </Reveal>
           <Reveal delay={120}>
-            <div className="rail-texture relative overflow-hidden rounded-xl border border-pine-line bg-pine p-8 text-cream">
-              <div className="scan-line pointer-events-none absolute left-0 h-px w-full bg-lime/30" />
-              <p className="text-[10.5px] font-bold tracking-[0.16em] text-lime uppercase">Central de segurança · ao vivo</p>
+            <div className="rail-texture rounded-xl border border-pine-line bg-pine p-8 text-cream shadow-[0_30px_70px_-30px_rgba(19,46,38,0.6)]">
+              <p className="flex items-center gap-2 text-[10.5px] font-bold tracking-[0.18em] text-lime uppercase"><Ic name="shield" size={14} sw={2.4} /> Sessão protegida</p>
               <div className="mt-5 space-y-3">
                 {[
-                  { t: "Proteção anticópia", v: "Ativa", cor: "var(--color-lime)" },
-                  { t: "Tentativas bloqueadas", v: "0", cor: "var(--color-cream)" },
-                  { t: "DevTools", v: "Fechado", cor: "var(--color-cream)" },
-                  { t: "Marca d'água de sessão", v: "Ativa", cor: "var(--color-lime)" },
-                ].map((x) => (
-                  <div key={x.t} className="flex items-center justify-between rounded-md border border-pine-line bg-pine-deep/70 px-4 py-3">
-                    <span className="text-[12.5px] font-semibold text-cream/70">{x.t}</span>
-                    <span className="font-display text-[13px] font-extrabold" style={{ color: x.cor }}>{x.v}</span>
+                  ["Autenticação", "hash SHA-256 + salt", true],
+                  ["Acesso corporativo", "domínios gratuitos bloqueados", true],
+                  ["Anti força-bruta", "bloqueio progressivo ativo", true],
+                  ["Auditoria", "registro contínuo de eventos", true],
+                ].map(([t, d]) => (
+                  <div key={t as string} className="flex items-center justify-between rounded-lg border border-pine-line bg-pine-deep/70 px-4 py-3">
+                    <div>
+                      <p className="text-[13px] font-bold text-cream">{t as string}</p>
+                      <p className="text-[11px] text-cream/50">{d as string}</p>
+                    </div>
+                    <span className="grid size-6 place-items-center rounded-full bg-lime/20 text-lime"><Ic name="check" size={13} sw={2.8} /></span>
                   </div>
                 ))}
               </div>
@@ -534,56 +448,32 @@ function Seguranca() {
   );
 }
 
-function Depoimentos() {
-  return (
-    <section className="bg-paper py-20">
-      <div className="mx-auto max-w-[1160px] px-5">
-        <Reveal>
-          <p className="mb-2 text-center text-[11px] font-bold tracking-[0.16em] text-moss uppercase">Quem já saiu do risco</p>
-          <h2 className="font-display mx-auto max-w-xl text-center text-[34px] leading-tight font-extrabold tracking-tight text-ink sm:text-[40px]">
-            Conformidade que <span className="text-moss">se paga</span> no primeiro mês.
-          </h2>
-        </Reveal>
-        <div className="mt-12 grid gap-6 lg:grid-cols-3">
-          {DEPOIMENTOS.map((d, i) => (
-            <Reveal key={d.n} delay={i * 100} className={d.off}>
-              <figure className="relative rounded-xl border border-sand bg-cream p-6 transition hover:-translate-y-1 hover:border-moss/50 hover:shadow-[0_18px_40px_-20px_rgba(19,46,38,0.45)]">
-                <Ic name="spark" size={22} sw={2} className="text-lime" />
-                <blockquote className="mt-3 text-[14px] leading-relaxed text-ink">“{d.t}”</blockquote>
-                <figcaption className="mt-5 flex items-center gap-3 border-t border-sand pt-4">
-                  <span className="grid size-10 place-items-center rounded-full bg-pine font-display text-[14px] font-extrabold text-lime">{d.n[0]}</span>
-                  <span><span className="block text-[13px] font-bold text-ink">{d.n}</span><span className="text-[11.5px] text-ink-faint">{d.c}</span></span>
-                </figcaption>
-              </figure>
-            </Reveal>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
+/* ---------------- FAQ ---------------- */
+const FAQ = [
+  { q: "Como funciona o trial de 7 dias?", a: "Ao se cadastrar com e-mail corporativo você entra em modo visualização por 7 dias: pode explorar os registros de exemplo, a matriz e os programas ISO. Para criar e editar, escolha um plano dentro do próprio sistema." },
+  { q: "Preciso de cartão de crédito para testar?", a: "Não. O trial é gratuito e sem cartão. A assinatura só é ativada quando você escolhe um plano dentro do sistema." },
+  { q: "Meus dados saem do navegador?", a: "Não. Nesta edição, todo o processamento — inclusive a IA — roda localmente no seu navegador. Nada é enviado a servidores externos." },
+  { q: "Posso trocar de plano depois?", a: "Sim. Você pode evoluir do Standard para o Business ou Completo a qualquer momento, com liberação imediata das funcionalidades." },
+  { q: "Serve para empresas que atuam na Europa?", a: "Sim. Além da LGPD, o sistema cobre o GDPR: ROPA do Art. 30, bases do Art. 6 e 9, transferências internacionais e o prazo de 30 dias." },
+];
 
 function Faq() {
   const [aberto, setAberto] = useState(0);
   return (
-    <section id="faq" className="bg-cream py-20">
+    <section id="faq" className="bg-cream pb-20">
       <div className="mx-auto max-w-[760px] px-5">
         <Reveal>
-          <h2 className="font-display text-center text-[34px] leading-tight font-extrabold tracking-tight text-ink sm:text-[40px]">Perguntas frequentes</h2>
+          <h2 className="font-display text-center text-[32px] leading-tight font-extrabold tracking-tight text-ink sm:text-[40px]">Perguntas frequentes</h2>
         </Reveal>
         <div className="mt-10 space-y-3">
           {FAQ.map((f, i) => (
-            <Reveal key={i} delay={i * 60}>
-              <div className={`overflow-hidden rounded-lg border transition-colors ${aberto === i ? "border-moss bg-paper" : "border-sand bg-paper/60"}`}>
+            <Reveal key={f.q} delay={i * 60}>
+              <div className={`overflow-hidden rounded-lg border transition-colors ${aberto === i ? "border-moss bg-cream" : "border-sand bg-paper"}`}>
                 <button onClick={() => setAberto(aberto === i ? -1 : i)} className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left">
                   <span className="text-[14.5px] font-bold text-ink">{f.q}</span>
-                  <span className={`grid size-7 shrink-0 place-items-center rounded-full transition-transform duration-300 ${aberto === i ? "rotate-45 bg-moss text-cream" : "bg-paper-deep text-ink-soft"}`}>
-                    <Ic name="plus" size={13} sw={2.6} />
-                  </span>
+                  <Ic name="plus" size={17} sw={2.4} className={`shrink-0 text-moss transition-transform duration-300 ${aberto === i ? "rotate-45" : ""}`} />
                 </button>
-                <div className={`grid transition-all duration-300 ${aberto === i ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
-                  <div className="overflow-hidden"><p className="px-5 pb-4 text-[13.5px] leading-relaxed text-ink-soft">{f.a}</p></div>
-                </div>
+                {aberto === i && <p className="anim-rise px-5 pb-4 text-[13.5px] leading-relaxed text-ink-soft">{f.a}</p>}
               </div>
             </Reveal>
           ))}
@@ -593,56 +483,23 @@ function Faq() {
   );
 }
 
-function Contato() {
-  const [enviado, setEnviado] = useState(false);
-  const [form, setForm] = useState({ nome: "", email: "", empresa: "", msg: "" });
-  const enviar = (e: FormEvent) => {
-    e.preventDefault();
-    try {
-      const leads = JSON.parse(localStorage.getItem("radargrc:leads") ?? "[]");
-      leads.push({ ...form, ts: Date.now() });
-      localStorage.setItem("radargrc:leads", JSON.stringify(leads));
-    } catch { /* ignora */ }
-    setEnviado(true);
-  };
-  const inp = "w-full rounded-md border border-sand bg-cream px-3.5 py-2.5 text-[13.5px] text-ink outline-none transition placeholder:text-ink-faint focus:border-moss focus:ring-2 focus:ring-moss/25";
+/* ---------------- CTA final + rodapé ---------------- */
+function Cta({ onAcessar }: { onAcessar: () => void }) {
   return (
-    <section id="contato" className="rail-texture bg-pine py-20 text-cream">
-      <div className="mx-auto grid max-w-[1000px] items-center gap-12 px-5 lg:grid-cols-2">
+    <section className="rail-texture relative overflow-hidden bg-pine py-20 text-cream">
+      <div className="pointer-events-none absolute -bottom-32 -left-24 size-[440px] rounded-full border border-lime/10" />
+      <div className="mx-auto max-w-[860px] px-5 text-center">
         <Reveal>
-          <p className="mb-2 text-[11px] font-bold tracking-[0.16em] text-lime uppercase">Fale com um especialista</p>
-          <h2 className="font-display text-[34px] leading-tight font-extrabold tracking-tight sm:text-[42px]">
-            Quer ver com os <span className="text-lime">seus dados</span>?
+          <h2 className="font-display text-[34px] leading-tight font-extrabold tracking-tight sm:text-[46px]">
+            A ANPD não avisa <span className="text-lime">quando vai fiscalizar.</span>
           </h2>
-          <p className="mt-4 text-[14.5px] leading-relaxed text-cream/70">
-            Agende uma demonstração guiada ou tire dúvidas sobre implantação, white-label e integração.
-            Respondemos em até 1 dia útil.
+          <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-cream/70">
+            Esteja com o mapeamento pronto antes da primeira notificação. Comece hoje, em modo visualização, sem cartão.
           </p>
-          <div className="mt-6 space-y-2.5 text-[13px] font-semibold text-cream/60">
-            <p className="flex items-center gap-2.5"><Ic name="mail" size={15} className="text-lime" /> comercial@radargrc.app</p>
-            <p className="flex items-center gap-2.5"><Ic name="clock" size={15} className="text-lime" /> Seg–Sex · 9h às 18h (BRT)</p>
-          </div>
-        </Reveal>
-        <Reveal delay={120}>
-          {enviado ? (
-            <div className="anim-pop rounded-xl border border-lime/40 bg-pine-deep p-8 text-center">
-              <span className="mx-auto grid size-14 place-items-center rounded-full bg-lime text-pine"><Ic name="check" size={26} sw={3} /></span>
-              <p className="font-display mt-4 text-[20px] font-extrabold">Recebemos sua mensagem!</p>
-              <p className="mt-2 text-[13px] text-cream/60">Um especialista entrará em contato pelo e-mail <strong className="text-lime">{form.email}</strong>.</p>
-            </div>
-          ) : (
-            <form onSubmit={enviar} className="rounded-xl border border-pine-line bg-pine-deep p-6">
-              <div className="grid gap-3.5 sm:grid-cols-2">
-                <input required className={inp} placeholder="Seu nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
-                <input required type="email" className={inp} placeholder="E-mail corporativo" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              </div>
-              <input className={`${inp} mt-3.5`} placeholder="Empresa" value={form.empresa} onChange={(e) => setForm({ ...form, empresa: e.target.value })} />
-              <textarea required rows={4} className={`${inp} mt-3.5 resize-none`} placeholder="Como podemos ajudar?" value={form.msg} onChange={(e) => setForm({ ...form, msg: e.target.value })} />
-              <button type="submit" className="group mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-lime py-3 text-[14px] font-extrabold text-pine transition hover:bg-lime-soft active:scale-[0.98]">
-                Enviar mensagem <Ic name="send" size={15} className="transition-transform group-hover:translate-x-1" />
-              </button>
-            </form>
-          )}
+          <button onClick={onAcessar} className="group mt-8 inline-flex items-center gap-2.5 rounded-md bg-lime px-8 py-3.5 text-[15px] font-extrabold text-pine shadow-[0_20px_44px_-16px_rgba(201,233,79,0.55)] transition hover:bg-lime-soft active:scale-[0.98]">
+            Começar meu mapeamento <Ic name="arrow" size={16} className="transition-transform group-hover:translate-x-1" />
+          </button>
+          <p className="mt-4 text-[11.5px] text-cream/45">7 dias grátis · e-mail corporativo · cancele quando quiser</p>
         </Reveal>
       </div>
     </section>
@@ -660,33 +517,28 @@ function Rodape({ onAcessar }: { onAcessar: () => void }) {
                 <span className="radar-sweep absolute inset-0" style={{ background: "conic-gradient(from 0deg, rgba(201,233,79,0.35), transparent 75deg)" }} />
                 <Ic name="radar" size={19} className="relative text-lime" sw={1.9} />
               </span>
-              <span className="font-display text-[17px] font-extrabold">Radar<span className="text-lime">GRC</span></span>
+              <span className="font-display text-[17px] font-extrabold tracking-tight">Radar<span className="text-lime">GRC</span></span>
             </div>
-            <p className="mt-3 text-[12px] leading-relaxed text-cream/50">Privacidade e conformidade com IA — LGPD, GDPR e 11 frameworks num único sistema.</p>
+            <p className="mt-3 text-[12px] leading-relaxed text-cream/50">Privacidade e conformidade sob o mesmo radar. LGPD, GDPR e programas ISO com IA — tudo no seu navegador.</p>
           </div>
           <div className="flex gap-14">
             <div>
-              <p className="text-[11px] font-bold tracking-[0.14em] text-lime uppercase">Produto</p>
-              <div className="mt-3 space-y-2 text-[13px] font-semibold text-cream/60">
-                <a href="#plataforma" className="block transition hover:text-lime">Plataforma</a>
-                <a href="#demonstracao" className="block transition hover:text-lime">Demonstração</a>
-                <a href="#precos" className="block transition hover:text-lime">Preços</a>
-              </div>
+              <p className="mb-3 text-[10.5px] font-extrabold tracking-[0.16em] text-cream/40 uppercase">Produto</p>
+              {[["#plataforma", "Plataforma"], ["#demonstracao", "Demonstração"], ["#precos", "Planos"]].map(([h, l]) => (
+                <a key={h} href={h} className="block py-1 text-[12.5px] text-cream/65 transition hover:text-lime">{l}</a>
+              ))}
             </div>
             <div>
-              <p className="text-[11px] font-bold tracking-[0.14em] text-lime uppercase">Empresa</p>
-              <div className="mt-3 space-y-2 text-[13px] font-semibold text-cream/60">
-                <a href="#seguranca" className="block transition hover:text-lime">Segurança</a>
-                <a href="#faq" className="block transition hover:text-lime">FAQ</a>
-                <a href="#contato" className="block transition hover:text-lime">Contato</a>
-              </div>
+              <p className="mb-3 text-[10.5px] font-extrabold tracking-[0.16em] text-cream/40 uppercase">Acesso</p>
+              <button onClick={onAcessar} className="block py-1 text-[12.5px] text-cream/65 transition hover:text-lime">Entrar</button>
+              <button onClick={onAcessar} className="block py-1 text-[12.5px] text-cream/65 transition hover:text-lime">Criar conta</button>
+              <a href="#faq" className="block py-1 text-[12.5px] text-cream/65 transition hover:text-lime">FAQ</a>
             </div>
           </div>
-          <button onClick={onAcessar} className="rounded-md border border-lime/40 px-5 py-2.5 text-[13px] font-bold text-lime transition hover:bg-lime hover:text-pine">Acessar o sistema</button>
         </div>
-        <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-pine-line pt-6 text-[11.5px] text-cream/40 md:flex-row">
-          <p>© 2026 Radar GRC · Todos os direitos reservados</p>
-          <p>Feito no Brasil 🇧🇷 · LGPD-first</p>
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-cream/10 pt-6 text-[11px] text-cream/40">
+          <p>© 2026 Radar GRC — sistema proprietário. Conteúdo protegido.</p>
+          <p className="flex items-center gap-1.5"><Ic name="shield" size={12} sw={2.2} className="text-lime/70" /> Feito no Brasil 🇧🇷</p>
         </div>
       </div>
     </footer>
@@ -704,9 +556,8 @@ export default function Landing({ onAcessar }: { onAcessar: () => void }) {
       <DemoIa />
       <Precos onAcessar={onAcessar} />
       <Seguranca />
-      <Depoimentos />
       <Faq />
-      <Contato />
+      <Cta onAcessar={onAcessar} />
       <Rodape onAcessar={onAcessar} />
     </div>
   );

@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useAuth } from "../auth";
+import { useAuth, validarSenhaForte } from "../auth";
 import { useStore } from "../store";
-import { fmtData } from "../types";
-import { diasRestantesTrial } from "./Plans";
+import { fmtData } from "../domain";
 import { Campo, Ic, inputCls, MedidorSenha, Modal } from "./ui";
 
 export default function AccountModal({ aberto, onFechar }: { aberto: boolean; onFechar: () => void }) {
@@ -37,8 +36,9 @@ export default function AccountModal({ aberto, onFechar }: { aberto: boolean; on
       setErro("Digite a senha atual.");
       return;
     }
-    if (nova.length < 8) {
-      setErro("A nova senha precisa de pelo menos 8 caracteres.");
+    const fraca = validarSenhaForte(nova);
+    if (fraca) {
+      setErro(fraca);
       return;
     }
     if (nova !== confirma) {
@@ -55,25 +55,20 @@ export default function AccountModal({ aberto, onFechar }: { aberto: boolean; on
     setAtual("");
     setNova("");
     setConfirma("");
-    toast("Senha alterada. Use a nova senha no próximo acesso.");
+    toast("Senha alterada com segurança.");
     onFechar();
   };
 
   return (
     <Modal aberto={aberto} onFechar={onFechar} titulo="Minha conta" largura="max-w-md">
       <div className="space-y-4">
-        {/* abas */}
         <div className="relative grid grid-cols-2 rounded-lg border border-sand bg-paper-deep p-1">
           <span
             className="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-md bg-pine shadow-sm transition-transform duration-300 ease-out"
             style={{ transform: aba === "seguranca" ? "translateX(calc(100% + 0.25rem))" : "translateX(0)" }}
           />
-          <button type="button" onClick={() => { setAba("perfil"); setErro(null); }} className={`relative z-10 rounded-md py-1.5 text-[12.5px] font-bold transition-colors ${aba === "perfil" ? "text-lime" : "text-ink-soft"}`}>
-            Perfil
-          </button>
-          <button type="button" onClick={() => { setAba("seguranca"); setErro(null); }} className={`relative z-10 rounded-md py-1.5 text-[12.5px] font-bold transition-colors ${aba === "seguranca" ? "text-lime" : "text-ink-soft"}`}>
-            Segurança
-          </button>
+          <button type="button" onClick={() => { setAba("perfil"); setErro(null); }} className={`relative z-10 rounded-md py-1.5 text-[12.5px] font-bold transition-colors ${aba === "perfil" ? "text-lime" : "text-ink-soft"}`}>Perfil</button>
+          <button type="button" onClick={() => { setAba("seguranca"); setErro(null); }} className={`relative z-10 rounded-md py-1.5 text-[12.5px] font-bold transition-colors ${aba === "seguranca" ? "text-lime" : "text-ink-soft"}`}>Segurança</button>
         </div>
 
         {erro && (
@@ -89,26 +84,13 @@ export default function AccountModal({ aberto, onFechar }: { aberto: boolean; on
               <div className="flex items-center gap-2.5 rounded-md border border-sand bg-paper px-3 py-2">
                 <Ic name="mail" size={14} className="text-ink-faint" />
                 <span className="truncate text-[13px] font-semibold text-ink-soft">{usuario.email}</span>
-                {usuario.demo && <span className="ml-auto rounded-sm bg-lime-soft px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide text-pine uppercase">Demo</span>}
-              </div>
-            </Campo>
-            <Campo label="Assinatura" hint="status do plano">
-              <div className="flex items-center gap-2.5 rounded-md border border-sand bg-paper px-3 py-2">
-                <Ic name="star" size={14} className={usuario.plano === "completo" ? "text-moss" : "text-amber"} />
-                <span className="text-[13px] font-semibold text-ink-soft">
-                  {usuario.demo
-                    ? "Demonstração — acesso permanente"
-                    : usuario.plano === "completo"
-                      ? "Plano Completo · R$ 149,00/mês"
-                      : `Free trial · ${diasRestantesTrial(usuario.trialAte)} dia(s) restante(s)`}
-                </span>
               </div>
             </Campo>
             <Campo label="Nome completo">
               <input className={inputCls} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Seu nome" />
             </Campo>
             <Campo label="Organização">
-              <input className={inputCls} value={empresa} onChange={(e) => setEmpresa(e.target.value)} placeholder="Empresa (opcional)" />
+              <input className={inputCls} value={empresa} onChange={(e) => setEmpresa(e.target.value)} placeholder="Empresa" />
             </Campo>
             <div className="flex items-center justify-between gap-3 border-t border-sand pt-4">
               <p className="text-[11px] text-ink-faint">Conta criada em {fmtData(usuario.criadoEm)}</p>
@@ -120,12 +102,12 @@ export default function AccountModal({ aberto, onFechar }: { aberto: boolean; on
         ) : (
           <div className="anim-rise space-y-3.5">
             <Campo label="Senha atual">
-              <input className={inputCls} type={ver ? "text" : "password"} value={atual} onChange={(e) => setAtual(e.target.value)} placeholder="Digite a senha atual" />
+              <input className={inputCls} type={ver ? "text" : "password"} value={atual} onChange={(e) => setAtual(e.target.value)} placeholder="Senha atual" />
             </Campo>
             <div>
               <Campo label="Nova senha">
                 <div className="relative">
-                  <input className={`${inputCls} pr-10`} type={ver ? "text" : "password"} value={nova} onChange={(e) => setNova(e.target.value)} placeholder="Mínimo 8 caracteres" />
+                  <input className={`${inputCls} pr-10`} type={ver ? "text" : "password"} value={nova} onChange={(e) => setNova(e.target.value)} placeholder="Mínimo 10 caracteres" />
                   <button type="button" onClick={() => setVer(!ver)} className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded p-1 text-ink-faint transition hover:text-moss" aria-label="Mostrar/ocultar senha">
                     <Ic name={ver ? "eyeOff" : "eye"} size={15} />
                   </button>

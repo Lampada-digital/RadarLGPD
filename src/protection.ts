@@ -1,14 +1,8 @@
 /* =====================================================================
-   Camada de proteção do sistema (dissuasão de cópia, inspeção e clonagem)
-
-   Nota técnica honesta: em aplicações que rodam no navegador, nenhum
-   esquema impede 100% a visualização do código — o JS sempre é executado
-   pelo cliente. Esta camada DESINCENTIVA e REGISTRA tentativas:
-   bloqueia atalhos de inspeção/cópia, menu de contexto, seleção de texto,
-   "ver código-fonte", salvar/imprimir página, embutimento em iframe,
-   detecta DevTools, aplica marca d'água com o e-mail da sessão e envia
-   tudo para a trilha de auditoria. A proteção real do código-fonte é
-   manter o repositório PRIVADO e publicar apenas o build.
+   Camada de proteção anticópia — site de vendas, login e sistema.
+   Desincentiva e registra tentativas de cópia/inspeção/clonagem.
+   (Nenhum esquema client-side impede 100% a leitura do código; a proteção
+   efetiva é manter o repositório privado e publicar só o build.)
    ===================================================================== */
 
 import { useSyncExternalStore } from "react";
@@ -18,41 +12,46 @@ export interface EstadoProtecao {
   devtools: boolean;
   bloqueios: number;
   iframeDetectado: boolean;
-  ultimaTentativa: string | null;
 }
 
-let estado: EstadoProtecao = { ativo: false, devtools: false, bloqueios: 0, iframeDetectado: false, ultimaTentativa: null };
+let estado: EstadoProtecao = { ativo: false, devtools: false, bloqueios: 0, iframeDetectado: false };
 const ouvintes = new Set<() => void>();
 let iniciado = false;
+const contexto: { email?: string; onEvento?: (d: string) => void } = {};
 
 function publicar(patch: Partial<EstadoProtecao>) {
   estado = { ...estado, ...patch };
   ouvintes.forEach((f) => f());
 }
 
-const subscribe = (f: () => void) => {
-  ouvintes.add(f);
-  return () => {
-    ouvintes.delete(f);
-  };
-};
-
-/** Estado reativo da proteção (usado pelo painel e pelo indicador do topo). */
 export function useProtecao(): EstadoProtecao {
-  return useSyncExternalStore(subscribe, () => estado);
+  return useSyncExternalStore(
+    (f) => {
+      ouvintes.add(f);
+      return () => ouvintes.delete(f);
+    },
+    () => estado
+  );
 }
 
-/** Inicia a proteção uma única vez por sessão de aplicativo. */
-export function iniciarProtecao(email: string | undefined, onEvento?: (detalhe: string) => void) {
-  if (iniciado) return;
+/** Ativa a proteção global (pode ser chamada várias vezes — só instala uma vez). */
+export function iniciarProtecao(email?: string, onEvento?: (d: string) => void) {
+  contexto.email = email;
+  contexto.onEvento = onEvento;
+
+  if (iniciado) {
+    publicar({});
+    return;
+  }
   iniciado = true;
 
+  const quem = () => contexto.email ?? "visitante (site público)";
   const relatar = (detalhe: string) => {
-    publicar({ ultimaTentativa: new Date().toLocaleTimeString("pt-BR") });
-    onEvento?.(detalhe);
+    publicar({ ultimaTentativa: new Date().toLocaleTimeString("pt-BR") } as Partial<EstadoProtecao>);
+    contexto.onEvento?.(detalhe);
   };
 
-  /* ---------- 1. anti-iframe (frame-busting) ---------- */
+  /* anti-iframe (frame-busting) */
   let iframeDetectado = false;
   if (window.self !== window.top) {
     iframeDetectado = true;
@@ -60,21 +59,15 @@ export function iniciarProtecao(email: string | undefined, onEvento?: (detalhe: 
     try {
       window.top!.location = window.self.location.href;
     } catch {
-      /* origem distinta — o CSP frame-ancestors 'none' já nega no servidor */
+      /* origem distinta — CSP frame-ancestors já nega */
     }
   }
   publicar({ ativo: true, iframeDetectado });
 
-  /* ---------- 2. aviso de propriedade no console ---------- */
+  /* aviso de propriedade no console */
   try {
-    console.log(
-      "%c⛔ Radar GRC — sistema proprietário",
-      "font-size:15px;font-weight:800;color:#132e26;background:#c9e94f;padding:4px 12px;border-radius:6px"
-    );
-    console.log(
-      "%cInterface e código protegidos contra cópia. Toda tentativa de inspeção, extração ou engenharia reversa é registrada na trilha de auditoria desta sessão.",
-      "color:#bd4f26;font-weight:600"
-    );
+    console.log("%c⛔ Radar GRC — sistema proprietário", "font-size:15px;font-weight:800;color:#132e26;background:#c9e94f;padding:4px 12px;border-radius:6px");
+    console.log("%cInterface protegida contra cópia. Tentativas de inspeção e extração são registradas na trilha de auditoria.", "color:#bd4f26;font-weight:600");
   } catch {
     /* console indisponível */
   }
@@ -85,48 +78,49 @@ export function iniciarProtecao(email: string | undefined, onEvento?: (detalhe: 
     return tag === "input" || tag === "textarea" || tag === "select" || !!h?.isContentEditable;
   };
 
-  /* ---------- 3. bloqueio de atalhos de inspeção e cópia ---------- */
-  const onKey = (e: KeyboardEvent) => {
-    const k = e.key.toLowerCase();
-    const devtools = e.key === "F12" || (e.ctrlKey && e.shiftKey && ["i", "j", "c", "k"].includes(k));
-    const sistema = e.ctrlKey && !e.shiftKey && ["u", "s", "p"].includes(k) && !ehCampo(e.target);
-    const copiarTudo = e.ctrlKey && k === "a" && !ehCampo(e.target);
-    if (devtools || sistema || copiarTudo) {
-      e.preventDefault();
-      e.stopPropagation();
-      publicar({ bloqueios: estado.bloqueios + 1 });
-      const combo = `${e.ctrlKey ? "Ctrl+" : ""}${e.shiftKey ? "Shift+" : ""}${e.key}`;
-      relatar(`Atalho bloqueado na sessão de ${email ?? "usuário"}: ${combo} (${devtools ? "ferramentas de inspeção" : sistema ? "cópia de página" : "seleção total"}).`);
-    }
-  };
+  /* bloqueio de atalhos de inspeção e cópia */
+  window.addEventListener(
+    "keydown",
+    (e) => {
+      const k = e.key.toLowerCase();
+      const devtools = e.key === "F12" || (e.ctrlKey && e.shiftKey && ["i", "j", "c", "k"].includes(k));
+      const sistema = e.ctrlKey && !e.shiftKey && ["u", "s", "p"].includes(k) && !ehCampo(e.target);
+      const copiar = e.ctrlKey && !e.shiftKey && ["c", "x", "a"].includes(k) && !ehCampo(e.target);
+      if (devtools || sistema || copiar) {
+        e.preventDefault();
+        e.stopPropagation();
+        publicar({ bloqueios: estado.bloqueios + 1 });
+        relatar(`Atalho bloqueado — ${quem()}: ${e.ctrlKey ? "Ctrl+" : ""}${e.shiftKey ? "Shift+" : ""}${e.key} (${devtools ? "inspeção" : sistema ? "cópia de página" : "copiar/recortar"}).`);
+      }
+    },
+    true
+  );
 
-  /* ---------- 4. bloqueio de menu de contexto (botão direito) ---------- */
-  const onCtx = (e: MouseEvent) => {
-    if (!ehCampo(e.target)) {
-      e.preventDefault();
-      publicar({ bloqueios: estado.bloqueios + 1 });
-    }
-  };
+  /* bloqueio de menu de contexto */
+  window.addEventListener(
+    "contextmenu",
+    (e) => {
+      if (!ehCampo(e.target)) {
+        e.preventDefault();
+        publicar({ bloqueios: estado.bloqueios + 1 });
+      }
+    },
+    true
+  );
 
-  /* ---------- 5. detecção de DevTools por geometria da janela ---------- */
+  /* bloqueio de arrasto */
+  window.addEventListener("dragstart", (e) => {
+    if (!ehCampo(e.target)) e.preventDefault();
+  });
+
+  /* detecção de DevTools por geometria */
   let devtoolsAnterior = false;
-  const checarDevtools = () => {
+  setInterval(() => {
     const aberto = window.outerWidth - window.innerWidth > 170 || window.outerHeight - window.innerHeight > 170;
     if (aberto !== devtoolsAnterior) {
       devtoolsAnterior = aberto;
       publicar({ devtools: aberto });
-      if (aberto) relatar(`Ambiente de inspeção (DevTools) detectado na sessão de ${email ?? "usuário"} — monitoramento elevado ativo.`);
+      if (aberto) relatar(`Ambiente de inspeção (DevTools) detectado — ${quem()} — monitoramento elevado.`);
     }
-  };
-
-  window.addEventListener("keydown", onKey, true);
-  window.addEventListener("contextmenu", onCtx, true);
-  window.addEventListener("dragstart", (e) => {
-    if (!ehCampo(e.target)) e.preventDefault();
-  });
-  const timer = window.setInterval(checarDevtools, 1200);
-  checarDevtools();
-
-  /* o módulo vive pelo tempo da SPA — mantém o timer referenciado */
-  void timer;
+  }, 1200);
 }
