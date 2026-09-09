@@ -5,16 +5,6 @@ mesmo radar: mapeamento LGPD e GDPR, programas de implementação das normas ISO
 certificações (SOC 2, PCI-DSS), gestão de cookies e documentos prontos para auditoria —
 com classificação assistida por IA que roda 100% no navegador.
 
-## Acesso
-
-| Conta | E-mail | Senha |
-|---|---|---|
-| Demonstração (Completo) | `demo@radarlgpd.app` | `demo1234` |
-| **Root / Administrador Master** | `root@radargrc.app` | `Root#Radar2026` |
-
-> A conta **root** é administrador com plano Completo (acesso total, sem marcação de demo).
-> Na tela de login, digite as credenciais manualmente (não aparece nos atalhos).
-
 ## Funcionalidades
 
 - 🗺️ **LGPD** — Registro de operações (art. 37) com classificação por IA, matriz de risco 5×5
