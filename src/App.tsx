@@ -27,13 +27,14 @@ import PentestLab from "./components/PentestLab";
 import PrivacyByDesign from "./components/PrivacyByDesign";
 import AuditoriaTI from "./components/AuditoriaTI";
 import Comite from "./components/Comite";
+import StatusReport from "./components/StatusReport";
 
 type Page =
   | "dashboard" | "assistente"
   | "lgpd-registro" | "lgpd-risco" | "lgpd-titulares" | "lgpd-bases"
   | "gdpr-ropa" | "gdpr-avancado"
   | "iso" | "ai-gov" | "cookies"
-  | "gap-analysis" | "siem" | "pentest-lab" | "privacy-by-design" | "auditoria-ti" | "comite"
+  | "gap-analysis" | "siem" | "pentest-lab" | "privacy-by-design" | "auditoria-ti" | "comite" | "status-report"
   | "relatorios" | "seguranca" | "planos" | "admin";
 
 const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; icone: string; badge?: "ia" }[] }[] = [
@@ -64,6 +65,9 @@ const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; i
     { id: "pentest-lab", label: "Laboratório Pentest", icone: "shield" },
     { id: "auditoria-ti", label: "Auditoria em TI", icone: "doc" },
   ]},
+  { secao: "Gestão", itens: [
+    { id: "status-report", label: "Status Report", icone: "doc" },
+  ]},
   { secao: "Entrega", itens: [
     { id: "relatorios", label: "Relatórios", icone: "printer" },
     { id: "seguranca", label: "Segurança", icone: "shield" },
@@ -92,6 +96,7 @@ const TITULOS: Record<Page, string> = {
   "privacy-by-design": "Privacy by Design",
   "auditoria-ti": "Auditoria em TI",
   comite: "Comitê LGPD & GDPR",
+  "status-report": "Status Report de Projetos",
   relatorios: "Relatórios & exportações",
   seguranca: "Central de segurança",
   planos: "Assinatura & plano",
@@ -297,6 +302,7 @@ function Shell() {
             {pagina === "privacy-by-design" && <PrivacyByDesign />}
             {pagina === "auditoria-ti" && <AuditoriaTI />}
             {pagina === "comite" && <Comite />}
+            {pagina === "status-report" && <StatusReport />}
             {pagina === "relatorios" && <Reports />}
             {pagina === "seguranca" && <Security />}
             {pagina === "planos" && <Plans />}

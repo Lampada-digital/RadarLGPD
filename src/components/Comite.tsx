@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useStore } from "../store";
+import { uid } from "../domain";
 import { Cabecalho, Ic, Reveal } from "./ui";
 
 /* =====================================================================
    Comitê LGPD & GDPR — governança de privacidade, reuniões,
-   decisões e acompanhamento de ações.
+   decisões e acompanhamento de ações. Totalmente editável.
    ===================================================================== */
 
 interface Reuniao {
@@ -53,6 +54,10 @@ export default function Comite() {
   const [acoes, setAcoes] = useState<Acao[]>(SEED_ACOES);
   const [aba, setAba] = useState<"reunioes" | "acoes">("reunioes");
   const [selecionada, setSelecionada] = useState<string | null>(null);
+  const [editandoReuniao, setEditandoReuniao] = useState(false);
+  const [editandoAcao, setEditandoAcao] = useState(false);
+  const [formReuniao, setFormReuniao] = useState<Partial<Reuniao>>({});
+  const [formAcao, setFormAcao] = useState<Partial<Acao>>({});
 
   const stats = {
     reunioes: reunioes.length,
@@ -61,10 +66,69 @@ export default function Comite() {
     pendentes: acoes.filter((a) => a.status === "pendente" || a.status === "em_andamento").length,
   };
 
-  const atualizarAcao = (acaoId: string, patch: Partial<Acao>) => {
-    setAcoes((l) => l.map((a) => a.id === acaoId ? { ...a, ...patch } : a));
-    registrar("comite", `Ação ${acaoId} atualizada.`);
+  const atualizarReuniao = (id: string, patch: Partial<Reuniao>) => {
+    setReunioes((l) => l.map((r) => r.id === id ? { ...r, ...patch } : r));
+    registrar("comite", `Reunião ${id} atualizada.`);
+    toast("Reunião atualizada.");
+  };
+
+  const criarReuniao = () => {
+    if (!formReuniao.data) {
+      toast("Informe a data da reunião.", "warn");
+      return;
+    }
+    const nova: Reuniao = {
+      id: uid(),
+      data: formReuniao.data ?? "",
+      pauta: formReuniao.pauta ?? [],
+      decisoes: formReuniao.decisoes ?? [],
+      participantes: formReuniao.participantes ?? [],
+      status: "agendada",
+    };
+    setReunioes((l) => [nova, ...l]);
+    registrar("comite", `Nova reunião criada: ${nova.data}`);
+    toast("Reunião criada com sucesso.");
+    setEditandoReuniao(false);
+    setFormReuniao({});
+  };
+
+  const excluirReuniao = (id: string) => {
+    setReunioes((l) => l.filter((r) => r.id !== id));
+    setAcoes((l) => l.filter((a) => a.reuniaoId !== id));
+    registrar("comite", `Reunião ${id} excluída.`);
+    toast("Reunião excluída.");
+  };
+
+  const atualizarAcao = (id: string, patch: Partial<Acao>) => {
+    setAcoes((l) => l.map((a) => a.id === id ? { ...a, ...patch } : a));
+    registrar("comite", `Ação ${id} atualizada.`);
     toast("Ação atualizada.");
+  };
+
+  const criarAcao = () => {
+    if (!formAcao.descricao || !formAcao.reuniaoId) {
+      toast("Preencha descrição e reunião.", "warn");
+      return;
+    }
+    const nova: Acao = {
+      id: uid(),
+      descricao: formAcao.descricao ?? "",
+      responsavel: formAcao.responsavel ?? "",
+      prazo: formAcao.prazo ?? "",
+      status: "pendente",
+      reuniaoId: formAcao.reuniaoId ?? "",
+    };
+    setAcoes((l) => [nova, ...l]);
+    registrar("comite", `Nova ação criada: ${nova.descricao}`);
+    toast("Ação criada com sucesso.");
+    setEditandoAcao(false);
+    setFormAcao({});
+  };
+
+  const excluirAcao = (id: string) => {
+    setAcoes((l) => l.filter((a) => a.id !== id));
+    registrar("comite", `Ação ${id} excluída.`);
+    toast("Ação excluída.");
   };
 
   const reuniao = reunioes.find((r) => r.id === selecionada);
@@ -104,6 +168,12 @@ export default function Comite() {
               {a === "reunioes" ? "Reuniões" : "Ações"}
             </button>
           ))}
+          <button
+            onClick={() => aba === "reunioes" ? (setEditandoReuniao(true), setFormReuniao({})) : (setEditandoAcao(true), setFormAcao({}))}
+            className="ml-auto inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-[12px] font-bold text-lime transition hover:bg-pine-deep"
+          >
+            <Ic name="plus" size={13} /> {aba === "reunioes" ? "Nova Reunião" : "Nova Ação"}
+          </button>
         </div>
       </Reveal>
 
@@ -126,7 +196,14 @@ export default function Comite() {
                         <p className="text-[12px] font-bold text-ink">{r.data}</p>
                         <p className="truncate text-[10.5px] text-ink-faint">{r.pauta[0]}</p>
                       </div>
-                      <Ic name="arrow" size={14} className={`shrink-0 text-ink-faint transition group-hover:translate-x-0.5 ${selecionada === r.id ? "text-moss" : ""}`} />
+                      <div className="flex gap-1">
+                        <button onClick={(e) => { e.stopPropagation(); setEditandoReuniao(true); setFormReuniao(r); }} className="rounded-md border border-sand p-1.5 text-ink-soft opacity-0 transition group-hover:opacity-100 hover:border-moss hover:text-moss" title="Editar">
+                          <Ic name="pencil" size={12} />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); excluirReuniao(r.id); }} className="rounded-md border border-sand p-1.5 text-ink-soft opacity-0 transition group-hover:opacity-100 hover:border-rust hover:text-rust" title="Excluir">
+                          <Ic name="trash" size={12} />
+                        </button>
+                      </div>
                     </button>
                   </li>
                 ))}
@@ -216,12 +293,105 @@ export default function Comite() {
                       <p className="text-[12.5px] font-semibold text-ink">{a.descricao}</p>
                       <p className="text-[10.5px] text-ink-faint">{a.responsavel} · Prazo: {a.prazo}</p>
                     </div>
+                    <div className="flex gap-1">
+                      <button onClick={() => { setEditandoAcao(true); setFormAcao(a); }} className="rounded-md border border-sand p-1.5 text-ink-soft opacity-0 transition group-hover:opacity-100 hover:border-moss hover:text-moss" title="Editar">
+                        <Ic name="pencil" size={12} />
+                      </button>
+                      <button onClick={() => excluirAcao(a.id)} className="rounded-md border border-sand p-1.5 text-ink-soft opacity-0 transition group-hover:opacity-100 hover:border-rust hover:text-rust" title="Excluir">
+                        <Ic name="trash" size={12} />
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
             )}
           </div>
         </Reveal>
+      )}
+
+      {/* Modal de edição de reunião */}
+      {editandoReuniao && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-pine-deep/60 p-4" onClick={() => setEditandoReuniao(false)}>
+          <div className="anim-pop w-full max-w-2xl rounded-lg border border-sand bg-cream p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display mb-4 text-[18px] font-bold text-ink">{formReuniao.id ? "Editar" : "Nova"} Reunião</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-bold tracking-[0.08em] text-ink-soft uppercase">Data</span>
+                <input type="date" className="w-full rounded-md border border-sand bg-cream px-3 py-2 text-[13px] text-ink outline-none focus:border-moss" value={formReuniao.data ?? ""} onChange={(e) => setFormReuniao({ ...formReuniao, data: e.target.value })} />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-bold tracking-[0.08em] text-ink-soft uppercase">Status</span>
+                <select className="w-full rounded-md border border-sand bg-cream px-3 py-2 text-[13px] text-ink outline-none focus:border-moss" value={formReuniao.status ?? "agendada"} onChange={(e) => setFormReuniao({ ...formReuniao, status: e.target.value as Reuniao["status"] })}>
+                  <option value="agendada">Agendada</option>
+                  <option value="realizada">Realizada</option>
+                  <option value="cancelada">Cancelada</option>
+                </select>
+              </label>
+              <label className="block sm:col-span-2">
+                <span className="mb-1.5 block text-[11px] font-bold tracking-[0.08em] text-ink-soft uppercase">Participantes (separados por vírgula)</span>
+                <input className="w-full rounded-md border border-sand bg-cream px-3 py-2 text-[13px] text-ink outline-none focus:border-moss" value={(formReuniao.participantes ?? []).join(", ")} onChange={(e) => setFormReuniao({ ...formReuniao, participantes: e.target.value.split(",").map((p) => p.trim()) })} />
+              </label>
+              <label className="block sm:col-span-2">
+                <span className="mb-1.5 block text-[11px] font-bold tracking-[0.08em] text-ink-soft uppercase">Pauta (um item por linha)</span>
+                <textarea className="w-full rounded-md border border-sand bg-cream px-3 py-2 text-[13px] text-ink outline-none focus:border-moss" rows={3} value={(formReuniao.pauta ?? []).join("\n")} onChange={(e) => setFormReuniao({ ...formReuniao, pauta: e.target.value.split("\n").filter((p) => p.trim()) })} />
+              </label>
+              <label className="block sm:col-span-2">
+                <span className="mb-1.5 block text-[11px] font-bold tracking-[0.08em] text-ink-soft uppercase">Decisões (uma por linha)</span>
+                <textarea className="w-full rounded-md border border-sand bg-cream px-3 py-2 text-[13px] text-ink outline-none focus:border-moss" rows={3} value={(formReuniao.decisoes ?? []).join("\n")} onChange={(e) => setFormReuniao({ ...formReuniao, decisoes: e.target.value.split("\n").filter((p) => p.trim()) })} />
+              </label>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={() => setEditandoReuniao(false)} className="rounded-md border border-sand px-4 py-2 text-[13px] font-semibold text-ink-soft transition hover:bg-paper">Cancelar</button>
+              <button onClick={() => { if (formReuniao.id) atualizarReuniao(formReuniao.id, formReuniao); else criarReuniao(); setEditandoReuniao(false); }} className="inline-flex items-center gap-2 rounded-md bg-pine px-5 py-2 text-[13px] font-bold text-lime transition hover:bg-pine-deep active:scale-[0.98]">
+                <Ic name="check" size={14} sw={2.6} /> Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de edição de ação */}
+      {editandoAcao && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-pine-deep/60 p-4" onClick={() => setEditandoAcao(false)}>
+          <div className="anim-pop w-full max-w-2xl rounded-lg border border-sand bg-cream p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display mb-4 text-[18px] font-bold text-ink">{formAcao.id ? "Editar" : "Nova"} Ação</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block sm:col-span-2">
+                <span className="mb-1.5 block text-[11px] font-bold tracking-[0.08em] text-ink-soft uppercase">Descrição</span>
+                <textarea className="w-full rounded-md border border-sand bg-cream px-3 py-2 text-[13px] text-ink outline-none focus:border-moss" rows={2} value={formAcao.descricao ?? ""} onChange={(e) => setFormAcao({ ...formAcao, descricao: e.target.value })} />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-bold tracking-[0.08em] text-ink-soft uppercase">Responsável</span>
+                <input className="w-full rounded-md border border-sand bg-cream px-3 py-2 text-[13px] text-ink outline-none focus:border-moss" value={formAcao.responsavel ?? ""} onChange={(e) => setFormAcao({ ...formAcao, responsavel: e.target.value })} />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-bold tracking-[0.08em] text-ink-soft uppercase">Prazo</span>
+                <input type="date" className="w-full rounded-md border border-sand bg-cream px-3 py-2 text-[13px] text-ink outline-none focus:border-moss" value={formAcao.prazo ?? ""} onChange={(e) => setFormAcao({ ...formAcao, prazo: e.target.value })} />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-bold tracking-[0.08em] text-ink-soft uppercase">Status</span>
+                <select className="w-full rounded-md border border-sand bg-cream px-3 py-2 text-[13px] text-ink outline-none focus:border-moss" value={formAcao.status ?? "pendente"} onChange={(e) => setFormAcao({ ...formAcao, status: e.target.value as Acao["status"] })}>
+                  <option value="pendente">Pendente</option>
+                  <option value="em_andamento">Em andamento</option>
+                  <option value="concluida">Concluída</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-bold tracking-[0.08em] text-ink-soft uppercase">Reunião</span>
+                <select className="w-full rounded-md border border-sand bg-cream px-3 py-2 text-[13px] text-ink outline-none focus:border-moss" value={formAcao.reuniaoId ?? ""} onChange={(e) => setFormAcao({ ...formAcao, reuniaoId: e.target.value })}>
+                  <option value="">Selecione...</option>
+                  {reunioes.map((r) => <option key={r.id} value={r.id}>{r.data}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={() => setEditandoAcao(false)} className="rounded-md border border-sand px-4 py-2 text-[13px] font-semibold text-ink-soft transition hover:bg-paper">Cancelar</button>
+              <button onClick={() => { if (formAcao.id) atualizarAcao(formAcao.id, formAcao); else criarAcao(); setEditandoAcao(false); }} className="inline-flex items-center gap-2 rounded-md bg-pine px-5 py-2 text-[13px] font-bold text-lime transition hover:bg-pine-deep active:scale-[0.98]">
+                <Ic name="check" size={14} sw={2.6} /> Salvar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

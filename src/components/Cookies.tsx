@@ -232,9 +232,21 @@ export default function Cookies() {
               <input className={inp} placeholder="URL completa" value={config.siteUrl} onChange={(e) => setConfig({ ...config, siteUrl: e.target.value })} />
               <input className={inp} placeholder="E-mail do DPO" value={config.dpoEmail} onChange={(e) => setConfig({ ...config, dpoEmail: e.target.value })} />
               <div className="flex items-center gap-2">
-                {["#2e6b54", "#1f4e8f", "#7a4f8f", "#bd4f26"].map((c) => (
-                  <button key={c} onClick={() => setConfig({ ...config, cor: c })} className={`size-8 rounded-md border-2 transition hover:scale-110 ${config.cor === c ? "border-ink shadow-md" : "border-transparent"}`} style={{ background: c }} aria-label={`Cor ${c}`} />
-                ))}
+                <label className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-ink-soft">Cor do banner:</span>
+                  <input
+                    type="color"
+                    value={config.cor}
+                    onChange={(e) => setConfig({ ...config, cor: e.target.value })}
+                    className="h-9 w-14 cursor-pointer rounded-md border-2 border-sand"
+                    title="Escolha uma cor personalizada"
+                  />
+                </label>
+                <div className="flex items-center gap-1">
+                  {["#2e6b54", "#1f4e8f", "#7a4f8f", "#bd4f26", "#c98a1f", "#0e7490"].map((c) => (
+                    <button key={c} onClick={() => setConfig({ ...config, cor: c })} className={`size-7 rounded-md border-2 transition hover:scale-110 ${config.cor === c ? "border-ink shadow-md" : "border-transparent"}`} style={{ background: c }} aria-label={`Cor ${c}`} />
+                  ))}
+                </div>
               </div>
             </div>
             <div className="mt-auto flex flex-wrap gap-2 pt-4">
