@@ -3,6 +3,7 @@ import { useStore } from "../store";
 import { FRAMEWORKS, progressoFramework, uid } from "../domain";
 import { Cabecalho, Ic, Reveal } from "./ui";
 import { baixarCsv, baixarExcel, baixarJson } from "../exportImport";
+import { DocPdf } from "../pdf";
 
 /* =====================================================================
    Gap Analysis — análise de lacunas entre o estado atual e os requisitos
