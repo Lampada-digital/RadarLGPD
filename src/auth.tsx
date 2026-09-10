@@ -192,34 +192,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       const lista = lerUsers();
-      const salt = uid();
-      const hash = await hashSenha(DEMO_SENHA, salt);
-      const demoCompleta = {
-        id: "demo-radar", orgId: "org-demo", nome: "Administrador Root", empresa: "Radar GRC",
-        email: DEMO_EMAIL, cargo: "Administrador do sistema", salt, hash,
-        criadoEm: new Date().toISOString(), papel: "admin" as Papel, plano: "completo" as PlanoConta, demo: true,
-      };
-      const idx = lista.findIndex((u) => u.email === DEMO_EMAIL);
-      if (idx === -1) {
-        lista.push(demoCompleta);
+      
+      /* conta DEMO: criar apenas se não existir */
+      const idxDemo = lista.findIndex((u) => u.email === DEMO_EMAIL);
+      if (idxDemo === -1) {
+        const salt = uid();
+        const hash = await hashSenha(DEMO_SENHA, salt);
+        lista.push({
+          id: "demo-radar", orgId: "org-demo", nome: "Administrador Root", empresa: "Radar GRC",
+          email: DEMO_EMAIL, cargo: "Administrador do sistema", salt, hash,
+          criadoEm: new Date().toISOString(), papel: "admin" as Papel, plano: "completo" as PlanoConta, demo: true,
+        });
       } else {
-        /* atualiza a conta existente para acesso total (corrige dados antigos/limitados) */
-        lista[idx] = { ...lista[idx], ...demoCompleta, criadoEm: lista[idx].criadoEm };
+        /* atualiza apenas os campos necessários, preservando salt e hash */
+        lista[idxDemo] = { 
+          ...lista[idxDemo], 
+          papel: "admin" as Papel, 
+          plano: "completo" as PlanoConta, 
+          demo: true,
+          bloqueado: false 
+        };
       }
 
-      /* conta ROOT: acesso total, sem marcação de demonstração */
-      const saltRoot = uid();
-      const hashRoot = await hashSenha(ROOT_SENHA, saltRoot);
-      const rootCompleta = {
-        id: "root-radar", orgId: "org-root", nome: "Administrador Master", empresa: "Radar GRC",
-        email: ROOT_EMAIL, cargo: "Diretoria / C-level", salt: saltRoot, hash: hashRoot,
-        criadoEm: new Date().toISOString(), papel: "admin" as Papel, plano: "completo" as PlanoConta,
-      };
+      /* conta ROOT: criar apenas se não existir */
       const idxRoot = lista.findIndex((u) => u.email === ROOT_EMAIL);
       if (idxRoot === -1) {
-        lista.push(rootCompleta);
+        const saltRoot = uid();
+        const hashRoot = await hashSenha(ROOT_SENHA, saltRoot);
+        lista.push({
+          id: "root-radar", orgId: "org-root", nome: "Administrador Master", empresa: "Radar GRC",
+          email: ROOT_EMAIL, cargo: "Diretoria / C-level", salt: saltRoot, hash: hashRoot,
+          criadoEm: new Date().toISOString(), papel: "admin" as Papel, plano: "completo" as PlanoConta,
+        });
       } else {
-        lista[idxRoot] = { ...lista[idxRoot], ...rootCompleta, criadoEm: lista[idxRoot].criadoEm };
+        /* atualiza apenas os campos necessários, preservando salt e hash */
+        lista[idxRoot] = { 
+          ...lista[idxRoot], 
+          papel: "admin" as Papel, 
+          plano: "completo" as PlanoConta,
+          bloqueado: false 
+        };
       }
 
       gravarUsers(lista);
