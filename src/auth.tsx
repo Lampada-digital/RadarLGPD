@@ -72,10 +72,18 @@ export async function hashSenha(senha: string, salt: string): Promise<string> {
 /* ---------- validação de e-mail corporativo ---------- */
 const DOMINIOS_LIVRES = new Set(["gmail.com","googlemail.com","outlook.com","hotmail.com","live.com","msn.com","yahoo.com","yahoo.com.br","icloud.com","me.com","aol.com","proton.me","protonmail.com","uol.com.br","bol.com.br","terra.com.br","globo.com","zipmail.com.br","yopmail.com","mailinator.com","tempmail.com"]);
 
+const DOMINIOS_PERMITIDOS = new Set(["radargrc.app", "radar-lgpd.com.br"]);
+
 export function validarEmailCorporativo(email: string): { ok: boolean; dominio?: string; msg: string } {
   const e = email.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) return { ok: false, msg: "Informe um e-mail válido." };
   const dominio = e.split("@")[1];
+  
+  // Permitir domínios específicos do sistema
+  if (DOMINIOS_PERMITIDOS.has(dominio)) {
+    return { ok: true, dominio, msg: "" };
+  }
+  
   if (DOMINIOS_LIVRES.has(dominio))
     return { ok: false, msg: `O domínio "${dominio}" é pessoal/gratuito. Use seu e-mail corporativo (ex.: voce@suaempresa.com.br).` };
   return { ok: true, dominio, msg: "" };
