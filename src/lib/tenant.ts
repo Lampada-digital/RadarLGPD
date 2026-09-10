@@ -6,13 +6,14 @@ export interface Tenant {
   nome: string;
   dominio: string;
   plano: 'starter' | 'professional' | 'enterprise';
-  status: 'ativo' | 'suspenso' | 'cancelado';
+  status: 'ativo' | 'suspenso' | 'cancelado' | 'trial';
   dataCriacao: string;
   dataRenovacao: string;
   logoUrl?: string;
-  corPrimaria?: string;
-  corSecundaria?: string;
-  nomePlataforma?: string;
+  faviconUrl?: string;
+  corPrimaria: string;
+  corSecundaria: string;
+  nomePlataforma: string;
   dpoNome?: string;
   dpoEmail?: string;
   suporteEmail?: string;
@@ -22,6 +23,8 @@ export interface Tenant {
   modulos: string[];
   limiteUsuarios: number;
   armazenamentoMB: number;
+  whiteLabelNivel: 'basico' | 'profissional' | 'enterprise';
+  dominioProprio?: string;
 }
 
 export interface UsuarioTenant {
@@ -33,86 +36,27 @@ export interface UsuarioTenant {
   ativo: boolean;
   dataCriacao: string;
   ultimoAcesso?: string;
+  permissoes: string[];
 }
 
-// Funções de gerenciamento de tenant
-export class TenantManager {
-  private static tenants: Map<string, Tenant> = new Map();
-
-  static criarTenant(dados: Omit<Tenant, 'id' | 'dataCriacao' | 'dataRenovacao'>): Tenant {
-    const id = this.gerarId();
-    const tenant: Tenant = {
-      ...dados,
-      id,
-      dataCriacao: new Date().toISOString(),
-      dataRenovacao: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 dias
-    };
-    this.tenants.set(id, tenant);
-    return tenant;
-  }
-
-  static obterTenant(id: string): Tenant | undefined {
-    return this.tenants.get(id);
-  }
-
-  static obterTenantPorDominio(dominio: string): Tenant | undefined {
-    return Array.from(this.tenants.values()).find(t => t.dominio === dominio);
-  }
-
-  static atualizarTenant(id: string, dados: Partial<Tenant>): Tenant | undefined {
-    const tenant = this.tenants.get(id);
-    if (!tenant) return undefined;
-    
-    const atualizado = { ...tenant, ...dados };
-    this.tenants.set(id, atualizado);
-    return atualizado;
-  }
-
-  static suspenderTenant(id: string): boolean {
-    const tenant = this.tenants.get(id);
-    if (!tenant) return false;
-    
-    tenant.status = 'suspenso';
-    this.tenants.set(id, tenant);
-    return true;
-  }
-
-  static reativarTenant(id: string): boolean {
-    const tenant = this.tenants.get(id);
-    if (!tenant) return false;
-    
-    tenant.status = 'ativo';
-    this.tenants.set(id, tenant);
-    return true;
-  }
-
-  static cancelarTenant(id: string): boolean {
-    const tenant = this.tenants.get(id);
-    if (!tenant) return false;
-    
-    tenant.status = 'cancelado';
-    this.tenants.set(id, tenant);
-    return true;
-  }
-
-  static listarTenants(): Tenant[] {
-    return Array.from(this.tenants.values());
-  }
-
-  static verificarLimiteUsuarios(tenantId: string): boolean {
-    const tenant = this.tenants.get(tenantId);
-    if (!tenant) return false;
-    return tenant.usuarios.length < tenant.limiteUsuarios;
-  }
-
-  private static gerarId(): string {
-    return 'tenant_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-  }
+export interface PlanoComercial {
+  id: 'starter' | 'professional' | 'enterprise';
+  nome: string;
+  preco: number;
+  limiteUsuarios: number;
+  armazenamentoMB: number;
+  modulos: string[];
+  whiteLabel: boolean;
+  dominioProprio: boolean;
+  relatoriosPersonalizados: boolean;
+  suporte: 'email' | 'email+chat' | 'prioritario';
+  descricao: string;
+  recursos: string[];
 }
 
-// Planos comerciais
-export const PLANOS = {
+export const PLANOS: Record<string, PlanoComercial> = {
   starter: {
+    id: 'starter',
     nome: 'Starter',
     preco: 99,
     limiteUsuarios: 5,
@@ -122,8 +66,19 @@ export const PLANOS = {
     dominioProprio: false,
     relatoriosPersonalizados: false,
     suporte: 'email',
+    descricao: 'Ideal para pequenas empresas iniciando na conformidade',
+    recursos: [
+      'Módulo LGPD completo',
+      'Até 5 usuários',
+      '1GB de armazenamento',
+      'Relatórios padrão',
+      'Suporte por email',
+      'Diagnóstico de conformidade',
+      'Gestão de riscos básica',
+    ],
   },
   professional: {
+    id: 'professional',
     nome: 'Professional',
     preco: 299,
     limiteUsuarios: 20,
@@ -133,41 +88,96 @@ export const PLANOS = {
     dominioProprio: false,
     relatoriosPersonalizados: true,
     suporte: 'email+chat',
+    descricao: 'Para empresas em crescimento que precisam de mais recursos',
+    recursos: [
+      'Todos os módulos do Starter',
+      'Até 20 usuários',
+      '5GB de armazenamento',
+      'White Label básico',
+      'Relatórios personalizados',
+      'Suporte por email e chat',
+      'Gestão de riscos avançada',
+      'Módulo de documentos',
+      'Planos de ação',
+    ],
   },
   enterprise: {
+    id: 'enterprise',
     nome: 'Enterprise',
     preco: 799,
     limiteUsuarios: -1, // ilimitado
     armazenamentoMB: 50000,
-    modulos: ['lgpd', 'riscos', 'compliance', 'documentos', 'auditoria', 'planos-acao', 'indicadores'],
+    modulos: ['lgpd', 'riscos', 'compliance', 'documentos', 'auditoria', 'planos-acao', 'indicadores', 'iso'],
     whiteLabel: true,
     dominioProprio: true,
     relatoriosPersonalizados: true,
     suporte: 'prioritario',
+    descricao: 'Solução completa para grandes organizações',
+    recursos: [
+      'Todos os módulos',
+      'Usuários ilimitados',
+      '50GB de armazenamento',
+      'White Label completo',
+      'Domínio próprio',
+      'Relatórios totalmente personalizados',
+      'Suporte prioritário 24/7',
+      'API de integração',
+      'Módulos ISO (27001, 27701, 37301, 37001)',
+      'Auditoria completa',
+      'Indicadores avançados',
+    ],
   },
 };
 
-// Middleware para identificar tenant
-export function identificarTenant(dominio: string): Tenant | undefined {
-  return TenantManager.obterTenantPorDominio(dominio);
+// Contexto do Tenant (será usado em toda a aplicação)
+export interface TenantContext {
+  tenant: Tenant | null;
+  usuario: UsuarioTenant | null;
+  setTenant: (tenant: Tenant) => void;
+  setUsuario: (usuario: UsuarioTenant) => void;
+  logout: () => void;
 }
 
-// Middleware para verificar permissões
-export function verificarPermissao(tenantId: string, modulo: string): boolean {
-  const tenant = TenantManager.obterTenant(tenantId);
-  if (!tenant) return false;
+// Funções utilitárias
+export function verificarPermissao(modulo: string, tenant: Tenant): boolean {
   return tenant.modulos.includes(modulo);
 }
 
-// Middleware para verificar limites
-export function verificarLimite(tenantId: string, tipo: 'usuarios' | 'armazenamento'): boolean {
-  const tenant = TenantManager.obterTenant(tenantId);
-  if (!tenant) return false;
-  
-  if (tipo === 'usuarios') {
-    return tenant.usuarios.length < tenant.limiteUsuarios || tenant.limiteUsuarios === -1;
+export function verificarLimiteUsuarios(tenant: Tenant): boolean {
+  if (tenant.limiteUsuarios === -1) return true; // ilimitado
+  return tenant.usuarios.length < tenant.limiteUsuarios;
+}
+
+export function calcularArmazenamentoUsado(tenantId: string): number {
+  // Em produção, isso viria do backend
+  const key = `storage_${tenantId}`;
+  const usado = localStorage.getItem(key);
+  return usado ? parseInt(usado) : 0;
+}
+
+export function registrarUsoArmazenamento(tenantId: string, bytes: number): void {
+  const key = `storage_${tenantId}`;
+  const atual = calcularArmazenamentoUsado(tenantId);
+  localStorage.setItem(key, String(atual + bytes));
+}
+
+export function obterTenantPorDominio(dominio: string): Tenant | null {
+  // Em produção, isso viria do backend
+  const tenants = JSON.parse(localStorage.getItem('tenants') || '[]');
+  return tenants.find((t: Tenant) => t.dominio === dominio || t.dominioProprio === dominio) || null;
+}
+
+export function salvarTenant(tenant: Tenant): void {
+  const tenants = JSON.parse(localStorage.getItem('tenants') || '[]');
+  const index = tenants.findIndex((t: Tenant) => t.id === tenant.id);
+  if (index >= 0) {
+    tenants[index] = tenant;
+  } else {
+    tenants.push(tenant);
   }
-  
-  // Verificar armazenamento (implementação futura)
-  return true;
+  localStorage.setItem('tenants', JSON.stringify(tenants));
+}
+
+export function gerarTenantId(): string {
+  return 'tenant_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
 }
