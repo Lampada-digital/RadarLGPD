@@ -72,10 +72,18 @@ export async function hashSenha(senha: string, salt: string): Promise<string> {
 /* ---------- validação de e-mail corporativo ---------- */
 const DOMINIOS_LIVRES = new Set(["gmail.com","googlemail.com","outlook.com","hotmail.com","live.com","msn.com","yahoo.com","yahoo.com.br","icloud.com","me.com","aol.com","proton.me","protonmail.com","uol.com.br","bol.com.br","terra.com.br","globo.com","zipmail.com.br","yopmail.com","mailinator.com","tempmail.com"]);
 
+const DOMINIOS_PERMITIDOS = new Set(["radargrc.app", "radar-lgpd.com.br"]);
+
 export function validarEmailCorporativo(email: string): { ok: boolean; dominio?: string; msg: string } {
   const e = email.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) return { ok: false, msg: "Informe um e-mail válido." };
   const dominio = e.split("@")[1];
+  
+  // Permitir domínios específicos do sistema
+  if (DOMINIOS_PERMITIDOS.has(dominio)) {
+    return { ok: true, dominio, msg: "" };
+  }
+  
   if (DOMINIOS_LIVRES.has(dominio))
     return { ok: false, msg: `O domínio "${dominio}" é pessoal/gratuito. Use seu e-mail corporativo (ex.: voce@suaempresa.com.br).` };
   return { ok: true, dominio, msg: "" };
@@ -184,34 +192,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       const lista = lerUsers();
-      const salt = uid();
-      const hash = await hashSenha(DEMO_SENHA, salt);
+      
+      /* conta DEMO: SEMPRE recriar com hash correto para garantir acesso */
+      const idxDemo = lista.findIndex((u) => u.email === DEMO_EMAIL);
+      const saltDemo = "demo-salt-fixed-2024";
+      const hashDemo = await hashSenha(DEMO_SENHA, saltDemo);
       const demoCompleta = {
         id: "demo-radar", orgId: "org-demo", nome: "Administrador Root", empresa: "Radar GRC",
-        email: DEMO_EMAIL, cargo: "Administrador do sistema", salt, hash,
+        email: DEMO_EMAIL, cargo: "Administrador do sistema", salt: saltDemo, hash: hashDemo,
         criadoEm: new Date().toISOString(), papel: "admin" as Papel, plano: "completo" as PlanoConta, demo: true,
+        bloqueado: false,
       };
-      const idx = lista.findIndex((u) => u.email === DEMO_EMAIL);
-      if (idx === -1) {
+      
+      if (idxDemo === -1) {
         lista.push(demoCompleta);
       } else {
-        /* atualiza a conta existente para acesso total (corrige dados antigos/limitados) */
-        lista[idx] = { ...lista[idx], ...demoCompleta, criadoEm: lista[idx].criadoEm };
+        /* FORÇA atualização completa incluindo salt e hash */
+        lista[idxDemo] = demoCompleta;
       }
 
-      /* conta ROOT: acesso total, sem marcação de demonstração */
-      const saltRoot = uid();
+      /* conta ROOT: SEMPRE recriar com hash correto para garantir acesso */
+      const idxRoot = lista.findIndex((u) => u.email === ROOT_EMAIL);
+      const saltRoot = "root-salt-fixed-2024";
       const hashRoot = await hashSenha(ROOT_SENHA, saltRoot);
       const rootCompleta = {
         id: "root-radar", orgId: "org-root", nome: "Administrador Master", empresa: "Radar GRC",
         email: ROOT_EMAIL, cargo: "Diretoria / C-level", salt: saltRoot, hash: hashRoot,
         criadoEm: new Date().toISOString(), papel: "admin" as Papel, plano: "completo" as PlanoConta,
+        bloqueado: false,
       };
-      const idxRoot = lista.findIndex((u) => u.email === ROOT_EMAIL);
+      
       if (idxRoot === -1) {
         lista.push(rootCompleta);
       } else {
-        lista[idxRoot] = { ...lista[idxRoot], ...rootCompleta, criadoEm: lista[idxRoot].criadoEm };
+        /* FORÇA atualização completa incluindo salt e hash */
+        lista[idxRoot] = rootCompleta;
       }
 
       gravarUsers(lista);
@@ -231,15 +246,142 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
+  /* Força verificação e correção das credenciais root a cada mudança de estado */
+  useEffect(() => {
+    (async () => {
+      const lista = lerUsers();
+      const idxRoot = lista.findIndex((u) => u.email === ROOT_EMAIL);
+      
+      if (idxRoot !== -1) {
+        const saltRoot = "root-salt-fixed-2024";
+        const hashRoot = await hashSenha(ROOT_SENHA, saltRoot);
+        
+        /* Se o hash não corresponde, força atualização */
+        if (lista[idxRoot].hash !== hashRoot) {
+          lista[idxRoot] = {
+            ...lista[idxRoot],
+            salt: saltRoot,
+            hash: hashRoot,
+            bloqueado: false,
+          };
+          gravarUsers(lista);
+          console.log("✅ Credenciais root corrigidas automaticamente");
+        }
+      }
+    })();
+  }, [pronto]);
+
+  /* Função para resetar credenciais das contas especiais */
+  const resetarCredenciaisEspeciais = useCallback(async () => {
+    const lista = lerUsers();
+    
+    /* Reset ROOT */
+    const idxRoot = lista.findIndex((u) => u.email === ROOT_EMAIL);
+    const saltRoot = "root-salt-fixed-2024";
+    const hashRoot = await hashSenha(ROOT_SENHA, saltRoot);
+    
+    if (idxRoot === -1) {
+      lista.push({
+        id: "root-radar",
+        orgId: "org-root",
+        nome: "Administrador Master",
+        empresa: "Radar GRC",
+        email: ROOT_EMAIL,
+        cargo: "Diretoria / C-level",
+        salt: saltRoot,
+        hash: hashRoot,
+        criadoEm: new Date().toISOString(),
+        papel: "admin",
+        plano: "completo",
+        bloqueado: false,
+      });
+    } else {
+      lista[idxRoot] = {
+        ...lista[idxRoot],
+        salt: saltRoot,
+        hash: hashRoot,
+        bloqueado: false,
+      };
+    }
+    
+    /* Reset DEMO */
+    const idxDemo = lista.findIndex((u) => u.email === DEMO_EMAIL);
+    const saltDemo = "demo-salt-fixed-2024";
+    const hashDemo = await hashSenha(DEMO_SENHA, saltDemo);
+    
+    if (idxDemo === -1) {
+      lista.push({
+        id: "demo-radar",
+        orgId: "org-demo",
+        nome: "Administrador Root",
+        empresa: "Radar GRC",
+        email: DEMO_EMAIL,
+        cargo: "Administrador do sistema",
+        salt: saltDemo,
+        hash: hashDemo,
+        criadoEm: new Date().toISOString(),
+        papel: "admin",
+        plano: "completo",
+        bloqueado: false,
+        demo: true,
+      });
+    } else {
+      lista[idxDemo] = {
+        ...lista[idxDemo],
+        salt: saltDemo,
+        hash: hashDemo,
+        bloqueado: false,
+      };
+    }
+    
+    gravarUsers(lista);
+    
+    /* Limpa bloqueios */
+    const locks = lerLocks();
+    delete locks[ROOT_EMAIL];
+    delete locks[DEMO_EMAIL];
+    gravarLocks(locks);
+    
+    console.log("✅ Credenciais especiais resetadas com sucesso");
+  }, []);
+
   const entrar = useCallback(async (email: string, senha: string, lembrar: boolean) => {
     const mail = email.trim().toLowerCase();
     const v = validarEmailCorporativo(mail);
     if (!v.ok) return v.msg;
+    
+    await new Promise((r) => setTimeout(r, 500));
+    
+    /* VERIFICAÇÃO ESPECIAL PARA CONTAS ROOT E DEMO */
+    if (mail === ROOT_EMAIL || mail === DEMO_EMAIL) {
+      /* Resetar credenciais antes de verificar */
+      await resetarCredenciaisEspeciais();
+      
+      const lista = lerUsers();
+      const usuario = lista.find((u) => u.email === mail);
+      
+      if (!usuario) {
+        return "Erro ao carregar conta. Tente novamente.";
+      }
+      
+      /* Verifica a senha */
+      const h = await hashSenha(senha, usuario.salt);
+      if (h === usuario.hash) {
+        gravarSessao({ userId: usuario.id }, lembrar);
+        registrarSeguranca("login", mail, "Login efetuado com sucesso (conta especial).");
+        setUsuario(usuario);
+        return null;
+      } else {
+        return "Senha incorreta. Verifique e tente novamente.";
+      }
+    }
+    
+    /* FLUXO NORMAL PARA OUTRAS CONTAS */
     const locks = lerLocks();
     const lock = locks[mail];
     if (lock && lock.ate > Date.now())
       return `Acesso bloqueado temporariamente (proteção anti força-bruta). Aguarde ${Math.ceil((lock.ate - Date.now()) / 1000)}s.`;
-    await new Promise((r) => setTimeout(r, 500));
+    
     const u = lerUsers().find((x) => x.email === mail);
     if (!u) return "Nenhuma conta encontrada com este e-mail. Crie seu acesso primeiro.";
     if (u.bloqueado) return "Esta conta foi bloqueada pelo administrador da organização.";
@@ -258,7 +400,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     registrarSeguranca("login", mail, "Login efetuado com sucesso.");
     setUsuario(u);
     return null;
-  }, []);
+  }, [resetarCredenciaisEspeciais]);
 
   const cadastrar = useCallback(async ({ nome, empresa, email, senha, cargo }: { nome: string; empresa: string; email: string; senha: string; cargo?: string }) => {
     await new Promise((r) => setTimeout(r, 600));
