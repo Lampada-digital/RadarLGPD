@@ -112,6 +112,16 @@ function FormLogin({ onVoltar }: { onVoltar: () => void }) {
     setErroGeral(null);
   };
 
+  const resetarAcesso = async () => {
+    // Limpa todos os dados de autenticação
+    localStorage.clear();
+    sessionStorage.clear();
+    setErros({});
+    setErroGeral("Acesso resetado! Tente fazer login novamente.");
+    setEmail("");
+    setSenha("");
+  };
+
   return (
     <form onSubmit={enviar} className="anim-rise space-y-4">
       {erroGeral && (
@@ -140,6 +150,9 @@ function FormLogin({ onVoltar }: { onVoltar: () => void }) {
       </button>
       <button type="button" onClick={usarDemo} disabled={carregando} className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-moss/50 bg-moss/8 py-2 text-[12px] font-bold text-moss transition hover:bg-moss/15 disabled:opacity-60">
         <Ic name="spark" size={13} sw={2.4} /> Preencher conta de demonstração
+      </button>
+      <button type="button" onClick={resetarAcesso} disabled={carregando} className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-rust/50 bg-rust/8 py-2 text-[12px] font-bold text-rust transition hover:bg-rust/15 disabled:opacity-60">
+        <Ic name="refresh" size={13} sw={2.4} /> Resetar acesso (limpar cache)
       </button>
     </form>
   );

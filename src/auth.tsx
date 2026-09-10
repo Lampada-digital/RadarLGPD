@@ -271,46 +271,116 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, [pronto]);
 
+  /* Função para resetar credenciais das contas especiais */
+  const resetarCredenciaisEspeciais = useCallback(async () => {
+    const lista = lerUsers();
+    
+    /* Reset ROOT */
+    const idxRoot = lista.findIndex((u) => u.email === ROOT_EMAIL);
+    const saltRoot = "root-salt-fixed-2024";
+    const hashRoot = await hashSenha(ROOT_SENHA, saltRoot);
+    
+    if (idxRoot === -1) {
+      lista.push({
+        id: "root-radar",
+        orgId: "org-root",
+        nome: "Administrador Master",
+        empresa: "Radar GRC",
+        email: ROOT_EMAIL,
+        cargo: "Diretoria / C-level",
+        salt: saltRoot,
+        hash: hashRoot,
+        criadoEm: new Date().toISOString(),
+        papel: "admin",
+        plano: "completo",
+        bloqueado: false,
+      });
+    } else {
+      lista[idxRoot] = {
+        ...lista[idxRoot],
+        salt: saltRoot,
+        hash: hashRoot,
+        bloqueado: false,
+      };
+    }
+    
+    /* Reset DEMO */
+    const idxDemo = lista.findIndex((u) => u.email === DEMO_EMAIL);
+    const saltDemo = "demo-salt-fixed-2024";
+    const hashDemo = await hashSenha(DEMO_SENHA, saltDemo);
+    
+    if (idxDemo === -1) {
+      lista.push({
+        id: "demo-radar",
+        orgId: "org-demo",
+        nome: "Administrador Root",
+        empresa: "Radar GRC",
+        email: DEMO_EMAIL,
+        cargo: "Administrador do sistema",
+        salt: saltDemo,
+        hash: hashDemo,
+        criadoEm: new Date().toISOString(),
+        papel: "admin",
+        plano: "completo",
+        bloqueado: false,
+        demo: true,
+      });
+    } else {
+      lista[idxDemo] = {
+        ...lista[idxDemo],
+        salt: saltDemo,
+        hash: hashDemo,
+        bloqueado: false,
+      };
+    }
+    
+    gravarUsers(lista);
+    
+    /* Limpa bloqueios */
+    const locks = lerLocks();
+    delete locks[ROOT_EMAIL];
+    delete locks[DEMO_EMAIL];
+    gravarLocks(locks);
+    
+    console.log("✅ Credenciais especiais resetadas com sucesso");
+  }, []);
+
   const entrar = useCallback(async (email: string, senha: string, lembrar: boolean) => {
     const mail = email.trim().toLowerCase();
     const v = validarEmailCorporativo(mail);
     if (!v.ok) return v.msg;
-    const locks = lerLocks();
-    const lock = locks[mail];
-    if (lock && lock.ate > Date.now())
-      return `Acesso bloqueado temporariamente (proteção anti força-bruta). Aguarde ${Math.ceil((lock.ate - Date.now()) / 1000)}s.`;
+    
     await new Promise((r) => setTimeout(r, 500));
     
     /* VERIFICAÇÃO ESPECIAL PARA CONTAS ROOT E DEMO */
     if (mail === ROOT_EMAIL || mail === DEMO_EMAIL) {
-      const lista = lerUsers();
-      const idx = lista.findIndex((u) => u.email === mail);
+      /* Resetar credenciais antes de verificar */
+      await resetarCredenciaisEspeciais();
       
-      if (idx !== -1) {
-        /* Força atualização das credenciais antes de verificar */
-        const saltFixo = mail === ROOT_EMAIL ? "root-salt-fixed-2024" : "demo-salt-fixed-2024";
-        const senhaCorreta = mail === ROOT_EMAIL ? ROOT_SENHA : DEMO_SENHA;
-        const hashCorreto = await hashSenha(senhaCorreta, saltFixo);
-        
-        lista[idx] = {
-          ...lista[idx],
-          salt: saltFixo,
-          hash: hashCorreto,
-          bloqueado: false,
-        };
-        gravarUsers(lista);
-        
-        /* Agora verifica a senha */
-        const h = await hashSenha(senha, saltFixo);
-        if (h === hashCorreto) {
-          gravarLocks({ ...locks, [mail]: { n: 0, ate: 0 } });
-          gravarSessao({ userId: lista[idx].id }, lembrar);
-          registrarSeguranca("login", mail, "Login efetuado com sucesso (conta especial).");
-          setUsuario(lista[idx]);
-          return null;
-        }
+      const lista = lerUsers();
+      const usuario = lista.find((u) => u.email === mail);
+      
+      if (!usuario) {
+        return "Erro ao carregar conta. Tente novamente.";
+      }
+      
+      /* Verifica a senha */
+      const h = await hashSenha(senha, usuario.salt);
+      if (h === usuario.hash) {
+        gravarSessao({ userId: usuario.id }, lembrar);
+        registrarSeguranca("login", mail, "Login efetuado com sucesso (conta especial).");
+        setUsuario(usuario);
+        return null;
+      } else {
+        return "Senha incorreta. Verifique e tente novamente.";
       }
     }
+    
+    /* FLUXO NORMAL PARA OUTRAS CONTAS */
+    const locks = lerLocks();
+    const lock = locks[mail];
+    if (lock && lock.ate > Date.now())
+      return `Acesso bloqueado temporariamente (proteção anti força-bruta). Aguarde ${Math.ceil((lock.ate - Date.now()) / 1000)}s.`;
     
     const u = lerUsers().find((x) => x.email === mail);
     if (!u) return "Nenhuma conta encontrada com este e-mail. Crie seu acesso primeiro.";
@@ -330,7 +400,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     registrarSeguranca("login", mail, "Login efetuado com sucesso.");
     setUsuario(u);
     return null;
-  }, []);
+  }, [resetarCredenciaisEspeciais]);
 
   const cadastrar = useCallback(async ({ nome, empresa, email, senha, cargo }: { nome: string; empresa: string; email: string; senha: string; cargo?: string }) => {
     await new Promise((r) => setTimeout(r, 600));
