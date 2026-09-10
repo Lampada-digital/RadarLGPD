@@ -195,7 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       /* conta DEMO: SEMPRE recriar com hash correto para garantir acesso */
       const idxDemo = lista.findIndex((u) => u.email === DEMO_EMAIL);
-      const saltDemo = uid();
+      const saltDemo = "demo-salt-fixed-2024";
       const hashDemo = await hashSenha(DEMO_SENHA, saltDemo);
       const demoCompleta = {
         id: "demo-radar", orgId: "org-demo", nome: "Administrador Root", empresa: "Radar GRC",
@@ -213,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       /* conta ROOT: SEMPRE recriar com hash correto para garantir acesso */
       const idxRoot = lista.findIndex((u) => u.email === ROOT_EMAIL);
-      const saltRoot = uid();
+      const saltRoot = "root-salt-fixed-2024";
       const hashRoot = await hashSenha(ROOT_SENHA, saltRoot);
       const rootCompleta = {
         id: "root-radar", orgId: "org-root", nome: "Administrador Master", empresa: "Radar GRC",
@@ -246,6 +246,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
+  /* Força verificação e correção das credenciais root a cada mudança de estado */
+  useEffect(() => {
+    (async () => {
+      const lista = lerUsers();
+      const idxRoot = lista.findIndex((u) => u.email === ROOT_EMAIL);
+      
+      if (idxRoot !== -1) {
+        const saltRoot = "root-salt-fixed-2024";
+        const hashRoot = await hashSenha(ROOT_SENHA, saltRoot);
+        
+        /* Se o hash não corresponde, força atualização */
+        if (lista[idxRoot].hash !== hashRoot) {
+          lista[idxRoot] = {
+            ...lista[idxRoot],
+            salt: saltRoot,
+            hash: hashRoot,
+            bloqueado: false,
+          };
+          gravarUsers(lista);
+          console.log("✅ Credenciais root corrigidas automaticamente");
+        }
+      }
+    })();
+  }, [pronto]);
+
   const entrar = useCallback(async (email: string, senha: string, lembrar: boolean) => {
     const mail = email.trim().toLowerCase();
     const v = validarEmailCorporativo(mail);
@@ -255,6 +280,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (lock && lock.ate > Date.now())
       return `Acesso bloqueado temporariamente (proteção anti força-bruta). Aguarde ${Math.ceil((lock.ate - Date.now()) / 1000)}s.`;
     await new Promise((r) => setTimeout(r, 500));
+    
+    /* VERIFICAÇÃO ESPECIAL PARA CONTAS ROOT E DEMO */
+    if (mail === ROOT_EMAIL || mail === DEMO_EMAIL) {
+      const lista = lerUsers();
+      const idx = lista.findIndex((u) => u.email === mail);
+      
+      if (idx !== -1) {
+        /* Força atualização das credenciais antes de verificar */
+        const saltFixo = mail === ROOT_EMAIL ? "root-salt-fixed-2024" : "demo-salt-fixed-2024";
+        const senhaCorreta = mail === ROOT_EMAIL ? ROOT_SENHA : DEMO_SENHA;
+        const hashCorreto = await hashSenha(senhaCorreta, saltFixo);
+        
+        lista[idx] = {
+          ...lista[idx],
+          salt: saltFixo,
+          hash: hashCorreto,
+          bloqueado: false,
+        };
+        gravarUsers(lista);
+        
+        /* Agora verifica a senha */
+        const h = await hashSenha(senha, saltFixo);
+        if (h === hashCorreto) {
+          gravarLocks({ ...locks, [mail]: { n: 0, ate: 0 } });
+          gravarSessao({ userId: lista[idx].id }, lembrar);
+          registrarSeguranca("login", mail, "Login efetuado com sucesso (conta especial).");
+          setUsuario(lista[idx]);
+          return null;
+        }
+      }
+    }
+    
     const u = lerUsers().find((x) => x.email === mail);
     if (!u) return "Nenhuma conta encontrada com este e-mail. Crie seu acesso primeiro.";
     if (u.bloqueado) return "Esta conta foi bloqueada pelo administrador da organização.";
