@@ -2,8 +2,6 @@ import { useState } from "react";
 import { useStore } from "../store";
 import { Cabecalho, Ic, Reveal } from "./ui";
 import { uid } from "../domain";
-import { baixarCsv, baixarExcel, baixarJson } from "../exportImport";
-import { DocPdf } from "../pdf";
 
 /* =====================================================================
    Status Report — Acompanhamento de projetos e iniciativas de GRC
