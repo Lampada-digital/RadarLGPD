@@ -6,6 +6,8 @@ import { BASES_ART7, BASES_ART11, TODAS_BASES } from "./domain";
 import { iniciarProtecao } from "./protection";
 import { Ic, ToastHost, Cabecalho, Reveal } from "./components/ui";
 import { BrandedHeader, BrandedSidebar, BrandedLogo } from "./components/BrandedComponents";
+import { useBranding } from "./lib/branding";
+import { usePermissoes } from "./hooks/usePermissoes";
 import AuthScreen from "./components/AuthScreen";
 import Landing from "./components/Landing";
 import Dashboard from "./components/Dashboard";
@@ -16,7 +18,9 @@ import Requests from "./components/Requests";
 import Gdpr from "./components/Gdpr";
 import GdprAvancado from "./components/GdprAvancado";
 import Iso from "./components/Iso";
-import Plans, { TrialGate, diasRestantesTrial } from "./components/Plans";
+import Plans from "./components/Plans";
+import { diasRestantesTrial } from "./components/Plans";
+import TrialGate from "./components/TrialGate";
 import AdminPanel from "./components/AdminPanel";
 import Reports from "./components/Reports";
 import Security from "./components/Security";
@@ -30,6 +34,7 @@ import PrivacyByDesign from "./components/PrivacyByDesign";
 import AuditoriaTI from "./components/AuditoriaTI";
 import Comite from "./components/Comite";
 import StatusReport from "./components/StatusReport";
+import LockedFeature from "./components/LockedFeature";
 import WhiteLabelAdmin from "./components/WhiteLabelAdmin";
 
 type Page =
@@ -159,6 +164,8 @@ function BasesLegais() {
 function Shell() {
   const { usuario, sair } = useAuth();
   const { score, solicitacoes, registrar } = useStore();
+  const { branding } = useBranding();
+  const { temAcesso, isDemo } = usePermissoes();
   const [pagina, setPagina] = useState<Page>("dashboard");
   const [menuAberto, setMenuAberto] = useState(false);
   const [menuUser, setMenuUser] = useState(false);
@@ -193,13 +200,29 @@ function Shell() {
         <div key={sec.secao}>
           <p className={`px-2.5 pt-4 pb-1.5 text-[9.5px] font-bold tracking-[0.2em] uppercase ${sec.admin ? "text-lime/60" : "text-cream/35"}`}>{sec.secao}</p>
           <div className="space-y-0.5">
-            {sec.itens.map((n) => (
-              <button key={n.id} onClick={() => irPara(n.id)} className={`group flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-semibold transition-all duration-150 ${pagina === n.id ? "bg-lime text-pine shadow-sm" : "text-cream/65 hover:bg-pine-line/60 hover:text-cream"}`}>
-                <Ic name={n.icone} size={16} sw={pagina === n.id ? 2.1 : 1.8} className={pagina === n.id ? "" : "transition-transform group-hover:scale-110"} />
-                <span className="flex-1 text-left">{n.label}</span>
-                {n.badge === "ia" && <span className="rounded-sm bg-lime px-1.5 py-0.5 text-[8.5px] font-extrabold tracking-wider text-pine uppercase">IA</span>}
-              </button>
-            ))}
+            {sec.itens.map((n) => {
+              const temAcessoItem = temAcesso(n.id);
+              const isBloqueado = !temAcessoItem && !isDemo;
+              
+              return (
+                <button 
+                  key={n.id} 
+                  onClick={() => irPara(n.id)} 
+                  className={`group flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-semibold transition-all duration-150 ${
+                    pagina === n.id 
+                      ? "bg-lime text-pine shadow-sm" 
+                      : isBloqueado
+                      ? "text-cream/30 hover:bg-pine-line/40 hover:text-cream/50"
+                      : "text-cream/65 hover:bg-pine-line/60 hover:text-cream"
+                  }`}
+                >
+                  <Ic name={n.icone} size={16} sw={pagina === n.id ? 2.1 : 1.8} className={pagina === n.id ? "" : "transition-transform group-hover:scale-110"} />
+                  <span className="flex-1 text-left">{n.label}</span>
+                  {isBloqueado && <Ic name="lock" size={12} className="text-cream/40" />}
+                  {n.badge === "ia" && !isBloqueado && <span className="rounded-sm bg-lime px-1.5 py-0.5 text-[8.5px] font-extrabold tracking-wider text-pine uppercase">IA</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
       ))}
@@ -212,9 +235,9 @@ function Shell() {
         <BrandedLogo className="flex-1" />
       </button>
       <NavList />
-      <div className="mx-3 mb-4 flex items-center justify-between rounded-md border px-3 py-2" style={{ borderColor: 'var(--brand-secondary)', backgroundColor: 'rgba(0,0,0,0.2)' }}>
-        <span className="flex items-center gap-1.5 text-[9px] font-extrabold tracking-[0.14em] uppercase" style={{ color: 'var(--brand-secondary)' }}>
-          <span className="pulse-dot size-1.5 rounded-full" style={{ backgroundColor: 'var(--brand-secondary)' }} /> online
+      <div className="mx-3 mb-4 flex items-center justify-between rounded-md border px-3 py-2" style={{ borderColor: branding.corSecundaria, backgroundColor: 'rgba(0,0,0,0.2)' }}>
+        <span className="flex items-center gap-1.5 text-[9px] font-extrabold tracking-[0.14em] uppercase" style={{ color: branding.corSecundaria }}>
+          <span className="pulse-dot size-1.5 rounded-full" style={{ backgroundColor: branding.corSecundaria }} /> online
         </span>
         <span className="text-[9px] font-bold" style={{ color: 'rgba(255,255,255,0.35)' }}>5 frameworks · IA</span>
       </div>
@@ -241,38 +264,38 @@ function Shell() {
       <div className="flex min-w-0 flex-1 flex-col">
         <BrandedHeader className="sticky top-0 z-30 border-b backdrop-blur-md">
           <div className="flex items-center gap-3 px-4 py-3 sm:px-6">
-            <button onClick={() => setMenuAberto(true)} className="rounded-md border p-2 lg:hidden" style={{ borderColor: 'var(--brand-secondary)', backgroundColor: 'var(--brand-background)', color: 'var(--brand-text)' }} aria-label="Abrir menu"><Ic name="menu" size={16} /></button>
+            <button onClick={() => setMenuAberto(true)} className="rounded-md border p-2 lg:hidden" style={{ borderColor: branding.corSecundaria, backgroundColor: branding.corFundo, color: branding.corTexto }} aria-label="Abrir menu"><Ic name="menu" size={16} /></button>
             <h2 className="font-display hidden text-[15px] font-bold md:block" style={{ color: 'white' }}>{TITULOS[pagina]}</h2>
 
-            <button onClick={() => irPara("planos")} className="ml-auto hidden items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10.5px] font-extrabold tracking-[0.12em] transition hover:opacity-85 sm:inline-flex" style={{ borderColor: 'var(--brand-secondary)', backgroundColor: 'var(--brand-secondary)', color: 'var(--brand-text)' }} title="Ver plano e assinatura">
+            <button onClick={() => irPara("planos")} className="ml-auto hidden items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10.5px] font-extrabold tracking-[0.12em] transition hover:opacity-85 sm:inline-flex" style={{ borderColor: branding.corSecundaria, backgroundColor: branding.corSecundaria, color: branding.corTexto }} title="Ver plano e assinatura">
               <Ic name="star" size={11} sw={2.4} /> {planoChip.txt}
             </button>
 
-            <button onClick={() => irPara("lgpd-titulares")} className="relative rounded-md border p-2 transition" style={{ borderColor: 'var(--brand-secondary)', backgroundColor: 'var(--brand-background)', color: 'var(--brand-text)' }} aria-label="Solicitações pendentes" title={`${abertas.length} solicitação(ões) em aberto`}>
+            <button onClick={() => irPara("lgpd-titulares")} className="relative rounded-md border p-2 transition" style={{ borderColor: branding.corSecundaria, backgroundColor: branding.corFundo, color: branding.corTexto }} aria-label="Solicitações pendentes" title={`${abertas.length} solicitação(ões) em aberto`}>
               <Ic name="bell" size={16} />
-              {abertas.length > 0 && <span className="absolute -top-1.5 -right-1.5 grid min-w-4.5 place-items-center rounded-full px-1 py-px text-[9px] font-extrabold" style={{ backgroundColor: 'var(--brand-secondary)', color: 'var(--brand-text)' }}>{abertas.length}</span>}
+              {abertas.length > 0 && <span className="absolute -top-1.5 -right-1.5 grid min-w-4.5 place-items-center rounded-full px-1 py-px text-[9px] font-extrabold" style={{ backgroundColor: branding.corSecundaria, color: branding.corTexto }}>{abertas.length}</span>}
             </button>
 
             <div className="relative">
-              <button onClick={() => setMenuUser((v) => !v)} className="flex items-center gap-2 rounded-md border px-2 py-1.5 transition" style={{ borderColor: menuUser ? 'var(--brand-primary)' : 'var(--brand-secondary)', backgroundColor: menuUser ? 'var(--brand-primary)' : 'var(--brand-background)', color: menuUser ? 'white' : 'var(--brand-text)' }} aria-label="Menu do usuário">
-                <span className="grid size-7 place-items-center rounded-full text-[11px] font-extrabold" style={{ backgroundColor: 'var(--brand-primary)', color: 'white' }}>{iniciais}</span>
+              <button onClick={() => setMenuUser((v) => !v)} className="flex items-center gap-2 rounded-md border px-2 py-1.5 transition" style={{ borderColor: menuUser ? branding.corPrimaria : branding.corSecundaria, backgroundColor: menuUser ? branding.corPrimaria : branding.corFundo, color: menuUser ? 'white' : branding.corTexto }} aria-label="Menu do usuário">
+                <span className="grid size-7 place-items-center rounded-full text-[11px] font-extrabold" style={{ backgroundColor: branding.corPrimaria, color: 'white' }}>{iniciais}</span>
                 <span className="hidden text-left sm:block">
-                  <span className="block max-w-[120px] truncate text-[12px] leading-tight font-bold" style={{ color: 'var(--brand-text)' }}>{usuario?.nome}</span>
-                  <span className="block max-w-[120px] truncate text-[10px]" style={{ color: 'var(--brand-text)', opacity: 0.6 }}>{usuario?.empresa || usuario?.email}</span>
+                  <span className="block max-w-[120px] truncate text-[12px] leading-tight font-bold" style={{ color: branding.corTexto }}>{usuario?.nome}</span>
+                  <span className="block max-w-[120px] truncate text-[10px]" style={{ color: branding.corTexto, opacity: 0.6 }}>{usuario?.empresa || usuario?.email}</span>
                 </span>
               </button>
               {menuUser && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setMenuUser(false)} />
-                  <div className="anim-pop absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-lg border shadow-[0_18px_40px_-16px_rgba(12,31,24,0.4)]" style={{ borderColor: 'var(--brand-secondary)', backgroundColor: 'var(--brand-background)' }}>
-                    <div className="border-b px-3.5 py-3" style={{ borderColor: 'var(--brand-secondary)', backgroundColor: 'var(--brand-background)' }}>
-                      <p className="truncate text-[12.5px] font-bold" style={{ color: 'var(--brand-text)' }}>{usuario?.nome}</p>
-                      <p className="truncate text-[11px]" style={{ color: 'var(--brand-text)', opacity: 0.6 }}>{usuario?.email}</p>
+                  <div className="anim-pop absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-lg border shadow-[0_18px_40px_-16px_rgba(12,31,24,0.4)]" style={{ borderColor: branding.corSecundaria, backgroundColor: branding.corFundo }}>
+                    <div className="border-b px-3.5 py-3" style={{ borderColor: branding.corSecundaria, backgroundColor: branding.corFundo }}>
+                      <p className="truncate text-[12.5px] font-bold" style={{ color: branding.corTexto }}>{usuario?.nome}</p>
+                      <p className="truncate text-[11px]" style={{ color: branding.corTexto, opacity: 0.6 }}>{usuario?.email}</p>
                     </div>
-                    <button onClick={() => { setContaAberta(true); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold transition" style={{ color: 'var(--brand-text)' }}><Ic name="user" size={15} /> Minha conta</button>
-                    <button onClick={() => { irPara("planos"); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold transition" style={{ color: 'var(--brand-text)' }}><Ic name="star" size={15} /> Assinatura</button>
-                    {ehAdmin && <button onClick={() => { irPara("admin"); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold transition" style={{ color: 'var(--brand-text)' }}><Ic name="shield" size={15} /> Painel admin</button>}
-                    <button onClick={() => { registrar("auth", `Logout solicitado: ${usuario?.email}`); sair(); }} className="flex w-full items-center gap-2.5 border-t px-3.5 py-2.5 text-[12.5px] font-bold transition" style={{ borderColor: 'var(--brand-secondary)', color: '#bd4f26' }}><Ic name="x" size={15} /> Sair da conta</button>
+                    <button onClick={() => { setContaAberta(true); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold transition" style={{ color: branding.corTexto }}><Ic name="user" size={15} /> Minha conta</button>
+                    <button onClick={() => { irPara("planos"); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold transition" style={{ color: branding.corTexto }}><Ic name="star" size={15} /> Assinatura</button>
+                    {ehAdmin && <button onClick={() => { irPara("admin"); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold transition" style={{ color: branding.corTexto }}><Ic name="shield" size={15} /> Painel admin</button>}
+                    <button onClick={() => { registrar("auth", `Logout solicitado: ${usuario?.email}`); sair(); }} className="flex w-full items-center gap-2.5 border-t px-3.5 py-2.5 text-[12.5px] font-bold transition" style={{ borderColor: branding.corSecundaria, color: '#bd4f26' }}><Ic name="x" size={15} /> Sair da conta</button>
                   </div>
                 </>
               )}
@@ -283,25 +306,25 @@ function Shell() {
         <main key={pagina} className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-[1160px] px-4 py-6 sm:px-6">
             {pagina === "dashboard" && <Dashboard irPara={irPara} />}
-            {pagina === "assistente" && <Assistant onUpgrade={() => irPara("planos")} />}
-            {pagina === "lgpd-registro" && <Activities onUpgrade={() => irPara("planos")} />}
-            {pagina === "lgpd-risco" && <RiskMatrix />}
-            {pagina === "lgpd-titulares" && <Requests onUpgrade={() => irPara("planos")} />}
-            {pagina === "lgpd-bases" && <BasesLegais />}
-            {pagina === "gdpr-ropa" && <Gdpr onUpgrade={() => irPara("planos")} />}
-            {pagina === "gdpr-avancado" && <GdprAvancado />}
-            {pagina === "iso" && <Iso onUpgrade={() => irPara("planos")} />}
-            {pagina === "ai-gov" && <Iso onUpgrade={() => irPara("planos")} inicial="ai-gov" />}
-            {pagina === "cookies" && <Cookies />}
-            {pagina === "gap-analysis" && <GapAnalysis />}
-            {pagina === "siem" && <Siem />}
-            {pagina === "pentest-lab" && <PentestLab />}
-            {pagina === "privacy-by-design" && <PrivacyByDesign />}
-            {pagina === "auditoria-ti" && <AuditoriaTI />}
-            {pagina === "comite" && <Comite />}
-            {pagina === "status-report" && <StatusReport />}
-            {pagina === "relatorios" && <Reports />}
-            {pagina === "seguranca" && <Security />}
+            {pagina === "assistente" && (temAcesso("assistente") || isDemo ? <Assistant onUpgrade={() => irPara("planos")} /> : <LockedFeature featureName="Assistente IA" />)}
+            {pagina === "lgpd-registro" && (temAcesso("lgpd-registro") || isDemo ? <Activities onUpgrade={() => irPara("planos")} /> : <LockedFeature featureName="Registro LGPD" />)}
+            {pagina === "lgpd-risco" && (temAcesso("lgpd-risco") || isDemo ? <RiskMatrix /> : <LockedFeature featureName="Matriz de Risco" />)}
+            {pagina === "lgpd-titulares" && (temAcesso("lgpd-titulares") || isDemo ? <Requests onUpgrade={() => irPara("planos")} /> : <LockedFeature featureName="Titulares" />)}
+            {pagina === "lgpd-bases" && (temAcesso("lgpd-bases") || isDemo ? <BasesLegais /> : <LockedFeature featureName="Bases Legais" />)}
+            {pagina === "gdpr-ropa" && (temAcesso("gdpr-ropa") || isDemo ? <Gdpr onUpgrade={() => irPara("planos")} /> : <LockedFeature featureName="ROPA GDPR" />)}
+            {pagina === "gdpr-avancado" && (temAcesso("gdpr-avancado") || isDemo ? <GdprAvancado /> : <LockedFeature featureName="GDPR Avançado" />)}
+            {pagina === "iso" && (temAcesso("iso") || isDemo ? <Iso onUpgrade={() => irPara("planos")} /> : <LockedFeature featureName="Frameworks ISO" />)}
+            {pagina === "ai-gov" && (temAcesso("ai-gov") || isDemo ? <Iso onUpgrade={() => irPara("planos")} inicial="ai-gov" /> : <LockedFeature featureName="Governança de IA" />)}
+            {pagina === "cookies" && (temAcesso("cookies") || isDemo ? <Cookies /> : <LockedFeature featureName="Gestão de Cookies" />)}
+            {pagina === "gap-analysis" && (temAcesso("gap-analysis") || isDemo ? <GapAnalysis /> : <LockedFeature featureName="Gap Analysis" />)}
+            {pagina === "siem" && (temAcesso("siem") || isDemo ? <Siem /> : <LockedFeature featureName="SIEM" />)}
+            {pagina === "pentest-lab" && (temAcesso("pentest-lab") || isDemo ? <PentestLab /> : <LockedFeature featureName="Laboratório Pentest" />)}
+            {pagina === "privacy-by-design" && (temAcesso("privacy-by-design") || isDemo ? <PrivacyByDesign /> : <LockedFeature featureName="Privacy by Design" />)}
+            {pagina === "auditoria-ti" && (temAcesso("auditoria-ti") || isDemo ? <AuditoriaTI /> : <LockedFeature featureName="Auditoria TI" />)}
+            {pagina === "comite" && (temAcesso("comite") || isDemo ? <Comite /> : <LockedFeature featureName="Comitê" />)}
+            {pagina === "status-report" && (temAcesso("status-report") || isDemo ? <StatusReport /> : <LockedFeature featureName="Status Report" />)}
+            {pagina === "relatorios" && (temAcesso("relatorios") || isDemo ? <Reports /> : <LockedFeature featureName="Relatórios" />)}
+            {pagina === "seguranca" && (temAcesso("seguranca") || isDemo ? <Security /> : <LockedFeature featureName="Segurança" />)}
             {pagina === "planos" && <Plans />}
             {pagina === "admin" && ehAdmin && <AdminPanel />}
           </div>
