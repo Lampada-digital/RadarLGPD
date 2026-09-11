@@ -39,7 +39,7 @@ export function useScreenProtection() {
       return false;
     };
 
-    // Detectar DevTools (métodos múltiplos)
+    // Detectar DevTools (apenas mostrar aviso, não bloquear)
     const detectDevTools = () => {
       const devtools = /./;
       let isOpen = false;
@@ -52,17 +52,18 @@ export function useScreenProtection() {
       if (widthThreshold || heightThreshold) {
         if (!isOpen) {
           isOpen = true;
-          document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;"><h1>Acesso não permitido com DevTools aberto</h1></div>';
+          // Apenas mostrar aviso no console, não bloquear
+          console.warn('⚠️ DevTools detectado - Este sistema possui proteções de segurança');
         }
       } else {
         isOpen = false;
       }
 
-      // Método 2: Console.log detection
+      // Método 2: Console.log detection (apenas aviso)
       devtools.toString = () => {
         if (!isOpen) {
           isOpen = true;
-          document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;"><h1>Acesso não permitido com DevTools aberto</h1></div>';
+          console.warn('⚠️ DevTools detectado - Este sistema possui proteções de segurança');
         }
         return '';
       };
@@ -70,68 +71,17 @@ export function useScreenProtection() {
       console.log('%c', devtools);
     };
 
-    // Bloquear atalhos de DevTools
+    // Atalhos de DevTools - apenas detectar, não bloquear
     const handleDevToolsShortcut = (e: KeyboardEvent) => {
-      // F12
-      if (e.key === 'F12') {
-        e.preventDefault();
-        return false;
-      }
-      
-      // Ctrl+Shift+I (Inspect)
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'I') {
-        e.preventDefault();
-        return false;
-      }
-      
-      // Ctrl+Shift+J (Console)
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'J') {
-        e.preventDefault();
-        return false;
-      }
-      
-      // Ctrl+Shift+C (Inspect Element)
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
-        e.preventDefault();
-        return false;
-      }
-      
-      // Ctrl+U (View Source)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
-        e.preventDefault();
-        return false;
+      // Apenas detectar, não bloquear
+      if (e.key === 'F12' || 
+          ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I', 'J', 'C'].includes(e.key)) ||
+          ((e.ctrlKey || e.metaKey) && e.key === 'u')) {
+        console.warn('⚠️ Atalho de DevTools detectado - Este sistema possui proteções de segurança');
       }
     };
 
-    // Detectar screen recording (método básico)
-    const detectScreenRecording = () => {
-      // Verificar se há APIs de gravação ativas
-      if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
-        // Monitorar se a tela está sendo gravada
-        const checkRecording = async () => {
-          try {
-            const stream = await navigator.mediaDevices.getDisplayMedia({ 
-              video: true,
-              audio: false 
-            });
-            
-            // Se conseguiu acessar, pode estar gravando
-            stream.getTracks().forEach(track => track.stop());
-            
-            // Mostrar aviso
-            if (!sessionStorage.getItem('recording_warning_shown')) {
-              sessionStorage.setItem('recording_warning_shown', 'true');
-              alert('⚠️ Atenção: Este sistema possui proteção contra gravação de tela. Qualquer tentativa de gravação será detectada e registrada.');
-            }
-          } catch (error) {
-            // Usuário cancelou ou não tem permissão
-          }
-        };
-
-        // Verificar periodicamente
-        setInterval(checkRecording, 5000);
-      }
-    };
+    // Removido - detecção de gravação pode causar problemas
 
     // Aplicar todas as proteções
     document.addEventListener('keydown', handlePrint);
@@ -143,9 +93,6 @@ export function useScreenProtection() {
 
     // Detectar DevTools continuamente
     const devToolsInterval = setInterval(detectDevTools, 1000);
-
-    // Detectar gravação de tela
-    detectScreenRecording();
 
     // Cleanup
     return () => {
