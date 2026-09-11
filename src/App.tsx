@@ -23,6 +23,7 @@ import Security from "./components/Security";
 import Cookies from "./components/Cookies";
 import AccountModal from "./components/AccountModal";
 import GapAnalysis from "./components/GapAnalysis";
+import { ScreenProtection } from "./components/ScreenProtection";
 import Siem from "./components/Siem";
 import PentestLab from "./components/PentestLab";
 import PrivacyByDesign from "./components/PrivacyByDesign";
@@ -224,6 +225,7 @@ function Shell() {
 
   return (
     <div className="protegido flex h-full">
+      <ScreenProtection />
       <BrandedSidebar className="rail-texture sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-pine-line lg:flex">
         {SidebarInner}
       </BrandedSidebar>

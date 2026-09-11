@@ -225,6 +225,56 @@ tr:hover {
   }
 }
 
+/* Bloquear impressão completamente */
+@media print {
+  html, body {
+    display: none !important;
+  }
+  
+  * {
+    display: none !important;
+  }
+  
+  body::before {
+    content: "Impressão não permitida neste sistema" !important;
+    display: block !important;
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    font-size: 24px !important;
+    font-weight: bold !important;
+    color: #bd4f26 !important;
+    text-align: center !important;
+  }
+}
+
+/* Bloquear seleção de texto */
+body {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+}
+
+/* Permitir seleção apenas em inputs */
+input, textarea {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Bloquear arrastar imagens */
+img {
+  -webkit-user-drag: none !important;
+  -khtml-user-drag: none !important;
+  -moz-user-drag: none !important;
+  -o-user-drag: none !important;
+  user-drag: none !important;
+  pointer-events: none !important;
+}
+
 /* Print styles */
 @media print {
   [data-branding="header"],
