@@ -213,11 +213,11 @@ function Shell() {
         <BrandedLogo className="flex-1" />
       </button>
       <NavList />
-      <div className="mx-3 mb-4 flex items-center justify-between rounded-md border border-pine-line bg-pine-deep/60 px-3 py-2">
-        <span className="flex items-center gap-1.5 text-[9px] font-extrabold tracking-[0.14em] text-lime/80 uppercase">
-          <span className="pulse-dot size-1.5 rounded-full bg-lime" /> online
+      <div className="mx-3 mb-4 flex items-center justify-between rounded-md border px-3 py-2" style={{ borderColor: 'var(--brand-secondary)', backgroundColor: 'rgba(0,0,0,0.2)' }}>
+        <span className="flex items-center gap-1.5 text-[9px] font-extrabold tracking-[0.14em] uppercase" style={{ color: 'var(--brand-secondary)' }}>
+          <span className="pulse-dot size-1.5 rounded-full" style={{ backgroundColor: 'var(--brand-secondary)' }} /> online
         </span>
-        <span className="text-[9px] font-bold text-cream/35">5 frameworks · IA</span>
+        <span className="text-[9px] font-bold" style={{ color: 'rgba(255,255,255,0.35)' }}>5 frameworks · IA</span>
       </div>
     </>
   );
@@ -239,40 +239,40 @@ function Shell() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <BrandedHeader className="sticky top-0 z-30 border-b border-sand backdrop-blur-md">
+        <BrandedHeader className="sticky top-0 z-30 border-b backdrop-blur-md">
           <div className="flex items-center gap-3 px-4 py-3 sm:px-6">
-            <button onClick={() => setMenuAberto(true)} className="rounded-md border border-sand bg-cream p-2 text-ink-soft lg:hidden" aria-label="Abrir menu"><Ic name="menu" size={16} /></button>
+            <button onClick={() => setMenuAberto(true)} className="rounded-md border p-2 lg:hidden" style={{ borderColor: 'var(--brand-secondary)', backgroundColor: 'var(--brand-background)', color: 'var(--brand-text)' }} aria-label="Abrir menu"><Ic name="menu" size={16} /></button>
             <h2 className="font-display hidden text-[15px] font-bold md:block" style={{ color: 'white' }}>{TITULOS[pagina]}</h2>
 
-            <button onClick={() => irPara("planos")} className={`ml-auto hidden items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10.5px] font-extrabold tracking-[0.12em] transition hover:opacity-85 sm:inline-flex ${planoChip.cls}`} title="Ver plano e assinatura">
+            <button onClick={() => irPara("planos")} className="ml-auto hidden items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10.5px] font-extrabold tracking-[0.12em] transition hover:opacity-85 sm:inline-flex" style={{ borderColor: 'var(--brand-secondary)', backgroundColor: 'var(--brand-secondary)', color: 'var(--brand-text)' }} title="Ver plano e assinatura">
               <Ic name="star" size={11} sw={2.4} /> {planoChip.txt}
             </button>
 
-            <button onClick={() => irPara("lgpd-titulares")} className="relative rounded-md border border-sand bg-cream p-2 text-ink-soft transition hover:border-moss hover:text-moss" aria-label="Solicitações pendentes" title={`${abertas.length} solicitação(ões) em aberto`}>
+            <button onClick={() => irPara("lgpd-titulares")} className="relative rounded-md border p-2 transition" style={{ borderColor: 'var(--brand-secondary)', backgroundColor: 'var(--brand-background)', color: 'var(--brand-text)' }} aria-label="Solicitações pendentes" title={`${abertas.length} solicitação(ões) em aberto`}>
               <Ic name="bell" size={16} />
-              {abertas.length > 0 && <span className="absolute -top-1.5 -right-1.5 grid min-w-4.5 place-items-center rounded-full bg-lime px-1 py-px text-[9px] font-extrabold text-pine">{abertas.length}</span>}
+              {abertas.length > 0 && <span className="absolute -top-1.5 -right-1.5 grid min-w-4.5 place-items-center rounded-full px-1 py-px text-[9px] font-extrabold" style={{ backgroundColor: 'var(--brand-secondary)', color: 'var(--brand-text)' }}>{abertas.length}</span>}
             </button>
 
             <div className="relative">
-              <button onClick={() => setMenuUser((v) => !v)} className={`flex items-center gap-2 rounded-md border px-2 py-1.5 transition ${menuUser ? "border-pine bg-pine text-lime" : "border-sand bg-cream text-ink-soft hover:border-moss"}`} aria-label="Menu do usuário">
-                <span className="grid size-7 place-items-center rounded-full bg-pine text-[11px] font-extrabold text-lime">{iniciais}</span>
+              <button onClick={() => setMenuUser((v) => !v)} className="flex items-center gap-2 rounded-md border px-2 py-1.5 transition" style={{ borderColor: menuUser ? 'var(--brand-primary)' : 'var(--brand-secondary)', backgroundColor: menuUser ? 'var(--brand-primary)' : 'var(--brand-background)', color: menuUser ? 'white' : 'var(--brand-text)' }} aria-label="Menu do usuário">
+                <span className="grid size-7 place-items-center rounded-full text-[11px] font-extrabold" style={{ backgroundColor: 'var(--brand-primary)', color: 'white' }}>{iniciais}</span>
                 <span className="hidden text-left sm:block">
-                  <span className="block max-w-[120px] truncate text-[12px] leading-tight font-bold text-ink">{usuario?.nome}</span>
-                  <span className="block max-w-[120px] truncate text-[10px] text-ink-faint">{usuario?.empresa || usuario?.email}</span>
+                  <span className="block max-w-[120px] truncate text-[12px] leading-tight font-bold" style={{ color: 'var(--brand-text)' }}>{usuario?.nome}</span>
+                  <span className="block max-w-[120px] truncate text-[10px]" style={{ color: 'var(--brand-text)', opacity: 0.6 }}>{usuario?.empresa || usuario?.email}</span>
                 </span>
               </button>
               {menuUser && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setMenuUser(false)} />
-                  <div className="anim-pop absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-lg border border-sand bg-cream shadow-[0_18px_40px_-16px_rgba(12,31,24,0.4)]">
-                    <div className="border-b border-sand bg-paper px-3.5 py-3">
-                      <p className="truncate text-[12.5px] font-bold text-ink">{usuario?.nome}</p>
-                      <p className="truncate text-[11px] text-ink-faint">{usuario?.email}</p>
+                  <div className="anim-pop absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-lg border shadow-[0_18px_40px_-16px_rgba(12,31,24,0.4)]" style={{ borderColor: 'var(--brand-secondary)', backgroundColor: 'var(--brand-background)' }}>
+                    <div className="border-b px-3.5 py-3" style={{ borderColor: 'var(--brand-secondary)', backgroundColor: 'var(--brand-background)' }}>
+                      <p className="truncate text-[12.5px] font-bold" style={{ color: 'var(--brand-text)' }}>{usuario?.nome}</p>
+                      <p className="truncate text-[11px]" style={{ color: 'var(--brand-text)', opacity: 0.6 }}>{usuario?.email}</p>
                     </div>
-                    <button onClick={() => { setContaAberta(true); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold text-ink-soft transition hover:bg-paper hover:text-ink"><Ic name="user" size={15} /> Minha conta</button>
-                    <button onClick={() => { irPara("planos"); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold text-ink-soft transition hover:bg-paper hover:text-ink"><Ic name="star" size={15} /> Assinatura</button>
-                    {ehAdmin && <button onClick={() => { irPara("admin"); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold text-ink-soft transition hover:bg-paper hover:text-ink"><Ic name="shield" size={15} /> Painel admin</button>}
-                    <button onClick={() => { registrar("auth", `Logout solicitado: ${usuario?.email}`); sair(); }} className="flex w-full items-center gap-2.5 border-t border-sand px-3.5 py-2.5 text-[12.5px] font-bold text-rust transition hover:bg-rust-soft/40"><Ic name="x" size={15} /> Sair da conta</button>
+                    <button onClick={() => { setContaAberta(true); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold transition" style={{ color: 'var(--brand-text)' }}><Ic name="user" size={15} /> Minha conta</button>
+                    <button onClick={() => { irPara("planos"); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold transition" style={{ color: 'var(--brand-text)' }}><Ic name="star" size={15} /> Assinatura</button>
+                    {ehAdmin && <button onClick={() => { irPara("admin"); setMenuUser(false); }} className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[12.5px] font-semibold transition" style={{ color: 'var(--brand-text)' }}><Ic name="shield" size={15} /> Painel admin</button>}
+                    <button onClick={() => { registrar("auth", `Logout solicitado: ${usuario?.email}`); sair(); }} className="flex w-full items-center gap-2.5 border-t px-3.5 py-2.5 text-[12.5px] font-bold transition" style={{ borderColor: 'var(--brand-secondary)', color: '#bd4f26' }}><Ic name="x" size={15} /> Sair da conta</button>
                   </div>
                 </>
               )}
