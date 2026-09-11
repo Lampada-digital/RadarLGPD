@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { useAuth } from '../auth';
+import { useBranding } from '../lib/branding';
 import { Ic } from './ui';
+import { BrandedButton, BrandedCard } from './BrandedComponents';
 
 interface BrandingConfig {
   nomePlataforma: string;
@@ -272,12 +274,12 @@ export default function WhiteLabelAdmin() {
             </div>
 
             <div className="mt-6 flex gap-3">
-              <button
+              <BrandedButton
                 onClick={handleSave}
-                className="flex-1 bg-moss text-cream px-6 py-3 rounded-lg font-bold hover:bg-moss/90 transition"
+                className="flex-1 px-6 py-3"
               >
                 Salvar Configurações
-              </button>
+              </BrandedButton>
               <button
                 onClick={handleReset}
                 className="px-6 py-3 border border-sand rounded-lg font-bold text-ink hover:bg-paper transition"

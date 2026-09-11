@@ -1,0 +1,236 @@
+/* Variáveis CSS dinâmicas do White Label */
+:root {
+  --brand-primary: #132e26;
+  --brand-secondary: #c9e94f;
+  --brand-background: #f2efe4;
+  --brand-text: #182620;
+}
+
+/* Aplicar cores em elementos principais */
+body {
+  background-color: var(--brand-background);
+  color: var(--brand-text);
+}
+
+/* Header */
+[data-branding="header"] {
+  background-color: var(--brand-primary) !important;
+}
+
+/* Sidebar */
+[data-branding="sidebar"] {
+  background-color: var(--brand-primary) !important;
+}
+
+/* Botões primários */
+button[data-branding="button-primary"],
+.btn-primary {
+  background-color: var(--brand-primary) !important;
+  color: white !important;
+}
+
+button[data-branding="button-primary"]:hover {
+  opacity: 0.9;
+}
+
+/* Botões secundários */
+button[data-branding="button-secondary"],
+.btn-secondary {
+  background-color: var(--brand-secondary) !important;
+  color: var(--brand-text) !important;
+}
+
+/* Links */
+a {
+  color: var(--brand-primary);
+}
+
+a:hover {
+  opacity: 0.8;
+}
+
+/* Cards e containers */
+.card {
+  background-color: white;
+  border: 1px solid var(--brand-primary);
+}
+
+/* Ícones e elementos de destaque */
+.icon-primary {
+  color: var(--brand-primary);
+}
+
+.icon-secondary {
+  color: var(--brand-secondary);
+}
+
+/* Textos */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--brand-text);
+}
+
+/* Footer */
+[data-branding="footer"] {
+  background-color: var(--brand-primary);
+  color: white;
+}
+
+/* Inputs */
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--brand-primary) !important;
+}
+
+/* Badges e tags */
+.badge-primary {
+  background-color: var(--brand-primary);
+  color: white;
+}
+
+.badge-secondary {
+  background-color: var(--brand-secondary);
+  color: var(--brand-text);
+}
+
+/* Progress bars */
+.progress-bar {
+  background-color: var(--brand-primary);
+}
+
+/* Alerts */
+.alert-primary {
+  background-color: var(--brand-primary);
+  color: white;
+  border-color: var(--brand-primary);
+}
+
+/* Tabs */
+.tab-active {
+  border-bottom-color: var(--brand-primary) !important;
+  color: var(--brand-primary) !important;
+}
+
+/* Checkboxes e radios */
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  background-color: var(--brand-primary) !important;
+  border-color: var(--brand-primary) !important;
+}
+
+/* Switches */
+.switch-active {
+  background-color: var(--brand-primary) !important;
+}
+
+/* Tooltips */
+.tooltip {
+  background-color: var(--brand-primary);
+  color: white;
+}
+
+/* Modais */
+.modal-header {
+  background-color: var(--brand-primary);
+  color: white;
+}
+
+/* Tabelas */
+th {
+  background-color: var(--brand-primary);
+  color: white;
+}
+
+tr:hover {
+  background-color: color-mix(in srgb, var(--brand-secondary) 10%, transparent);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar-thumb {
+  background-color: var(--brand-primary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--brand-primary) 80%, black);
+}
+
+/* Loading spinners */
+.spinner {
+  border-top-color: var(--brand-primary);
+}
+
+/* Notifications */
+.notification {
+  border-left: 4px solid var(--brand-primary);
+}
+
+/* Dropdown menus */
+.dropdown-item:hover {
+  background-color: color-mix(in srgb, var(--brand-secondary) 20%, transparent);
+}
+
+/* Pagination */
+.page-active {
+  background-color: var(--brand-primary);
+  color: white;
+}
+
+/* Breadcrumbs */
+.breadcrumb a:hover {
+  color: var(--brand-primary);
+}
+
+/* Search bar */
+.search-bar:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-primary) 20%, transparent);
+}
+
+/* Status indicators */
+.status-success {
+  color: var(--brand-primary);
+}
+
+.status-warning {
+  color: var(--brand-secondary);
+}
+
+/* Charts and graphs */
+.chart-primary {
+  fill: var(--brand-primary);
+  stroke: var(--brand-primary);
+}
+
+.chart-secondary {
+  fill: var(--brand-secondary);
+  stroke: var(--brand-secondary);
+}
+
+/* Avatar */
+.avatar {
+  background-color: var(--brand-primary);
+  color: white;
+}
+
+/* Logo container */
+.logo-container img {
+  max-height: 60px;
+  width: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .logo-container img {
+    max-height: 40px;
+  }
+}
+
+/* Print styles */
+@media print {
+  [data-branding="header"],
+  [data-branding="sidebar"] {
+    background-color: var(--brand-primary) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

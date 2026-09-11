@@ -5,6 +5,7 @@ import { StoreProvider, useStore } from "./store";
 import { BASES_ART7, BASES_ART11, TODAS_BASES } from "./domain";
 import { iniciarProtecao } from "./protection";
 import { Ic, ToastHost, Cabecalho, Reveal } from "./components/ui";
+import { BrandedHeader, BrandedSidebar, BrandedLogo } from "./components/BrandedComponents";
 import AuthScreen from "./components/AuthScreen";
 import Landing from "./components/Landing";
 import Dashboard from "./components/Dashboard";
@@ -209,14 +210,7 @@ function Shell() {
   const SidebarInner = (
     <>
       <button onClick={() => irPara("dashboard")} className="group flex items-center gap-3 px-5 pt-5 pb-4 text-left">
-        <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-lime/40 bg-pine-deep">
-          <span className="radar-sweep absolute inset-0" style={{ background: "conic-gradient(from 0deg, rgba(201,233,79,0.35), transparent 75deg)" }} />
-          <Ic name="radar" size={21} className="relative text-lime" sw={1.9} />
-        </span>
-        <span>
-          <span className="font-display block text-[17px] leading-none font-extrabold tracking-tight text-cream">Radar<span className="text-lime">GRC</span></span>
-          <span className="mt-1 block text-[9.5px] font-bold tracking-[0.18em] text-cream/40 uppercase">LGPD · GDPR · ISO</span>
-        </span>
+        <BrandedLogo className="flex-1" />
       </button>
       <NavList />
       <div className="mx-3 mb-4 flex items-center justify-between rounded-md border border-pine-line bg-pine-deep/60 px-3 py-2">
@@ -230,25 +224,25 @@ function Shell() {
 
   return (
     <div className="protegido flex h-full">
-      <aside className="rail-texture sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-pine-line bg-pine lg:flex">
+      <BrandedSidebar className="rail-texture sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-pine-line lg:flex">
         {SidebarInner}
-      </aside>
+      </BrandedSidebar>
 
       {menuAberto && (
         <div className="fixed inset-0 z-40 lg:hidden" role="dialog">
           <div className="absolute inset-0 bg-pine-deep/60" onClick={() => setMenuAberto(false)} />
-          <aside className="rail-texture anim-rise absolute top-0 left-0 flex h-full w-[264px] flex-col border-r border-pine-line bg-pine shadow-2xl">
+          <BrandedSidebar className="rail-texture anim-rise absolute top-0 left-0 flex h-full w-[264px] flex-col border-r border-pine-line shadow-2xl">
             <button onClick={() => setMenuAberto(false)} className="absolute top-4 right-3 rounded-md p-1.5 text-cream/60 hover:text-cream" aria-label="Fechar menu"><Ic name="x" size={16} /></button>
             {SidebarInner}
-          </aside>
+          </BrandedSidebar>
         </div>
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 border-b border-sand bg-paper/85 backdrop-blur-md">
+        <BrandedHeader className="sticky top-0 z-30 border-b border-sand backdrop-blur-md">
           <div className="flex items-center gap-3 px-4 py-3 sm:px-6">
             <button onClick={() => setMenuAberto(true)} className="rounded-md border border-sand bg-cream p-2 text-ink-soft lg:hidden" aria-label="Abrir menu"><Ic name="menu" size={16} /></button>
-            <h2 className="font-display hidden text-[15px] font-bold text-ink md:block">{TITULOS[pagina]}</h2>
+            <h2 className="font-display hidden text-[15px] font-bold md:block" style={{ color: 'white' }}>{TITULOS[pagina]}</h2>
 
             <button onClick={() => irPara("planos")} className={`ml-auto hidden items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10.5px] font-extrabold tracking-[0.12em] transition hover:opacity-85 sm:inline-flex ${planoChip.cls}`} title="Ver plano e assinatura">
               <Ic name="star" size={11} sw={2.4} /> {planoChip.txt}
@@ -284,7 +278,7 @@ function Shell() {
               )}
             </div>
           </div>
-        </header>
+        </BrandedHeader>
 
         <main key={pagina} className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-[1160px] px-4 py-6 sm:px-6">
