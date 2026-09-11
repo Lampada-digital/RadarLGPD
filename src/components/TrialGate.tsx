@@ -49,6 +49,9 @@ export default function TrialGate() {
 
               <button
                 onClick={() => {
+                  // Abrir link de pagamento do Mercado Pago
+                  window.open(plano.linkPagamento, "_blank", "noopener,noreferrer");
+                  
                   if (confirm(`Confirmar ativação do plano ${plano.nome} por R$ ${plano.preco}/mês?`)) {
                     ativarPlano(plano.id);
                   }
