@@ -34,7 +34,8 @@ O sistema de planos foi completamente implementado com as seguintes funcionalida
 
 ### 2. Conta Demo Limitada
 - Conta `demo@radarlgpd.app` / `demo1234`
-- Acesso apenas ao dashboard
+- **Acesso limitado a apenas 2 funções**: Dashboard e Planos
+- **Período de acesso**: 3 dias apenas
 - Todas as outras funcionalidades bloqueadas
 - Mostra tela de upgrade ao tentar acessar funcionalidades bloqueadas
 

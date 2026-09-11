@@ -4,6 +4,9 @@ import { Cabecalho, Ic, Reveal } from "./ui";
 import { uid } from "../domain";
 import { baixarCsv, baixarExcel, baixarJson } from "../exportImport";
 import { DocPdf } from "../pdf";
+import { BarChart } from "./charts/BarChart";
+import { PieChart } from "./charts/PieChart";
+import { GanttChart } from "./charts/GanttChart";
 
 /* =====================================================================
    Status Report — Acompanhamento de projetos e iniciativas de GRC
@@ -98,9 +101,11 @@ export default function StatusReport() {
 
   const stats = {
     total: projetos.length,
+    planejado: projetos.filter((p) => p.status === "planejado").length,
     em_andamento: projetos.filter((p) => p.status === "em_andamento").length,
     concluidos: projetos.filter((p) => p.status === "concluido").length,
     atrasados: projetos.filter((p) => p.status === "atrasado").length,
+    pausado: projetos.filter((p) => p.status === "pausado").length,
   };
 
   const atualizarProjeto = (id: string, patch: Partial<Projeto>) => {
@@ -140,6 +145,62 @@ export default function StatusReport() {
     toast("Projeto excluído.");
   };
 
+  const baixarPdf = () => {
+    const doc = new DocPdf("Status Report - Projetos GRC");
+    
+    // Cabeçalho
+    doc.titulo("Status Report - Projetos GRC", 24);
+    doc.texto(`Data: ${new Date().toLocaleDateString("pt-BR")}`, 10);
+    doc.texto(`Total de Projetos: ${projetos.length}`, 10);
+    doc.linhaH();
+    
+    // Estatísticas
+    doc.titulo("Resumo", 16);
+    doc.texto(`Em Andamento: ${stats.em_andamento}`, 10);
+    doc.texto(`Concluídos: ${stats.concluidos}`, 10);
+    doc.texto(`Atrasados: ${stats.atrasados}`, 10);
+    doc.linhaH();
+    
+    // Lista de projetos
+    doc.titulo("Projetos", 16);
+    
+    filtrados.forEach((p) => {
+      doc.titulo(p.nome, 14);
+      doc.texto(`Responsável: ${p.responsavel}`, 10);
+      doc.texto(`Período: ${p.dataInicio} → ${p.dataFim}`, 10);
+      doc.texto(`Status: ${p.status.replace("_", " ")}`, 10);
+      doc.texto(`Progresso: ${p.progresso}%`, 10);
+      
+      if (p.descricao) {
+        doc.texto(`Descrição: ${p.descricao}`, 10);
+      }
+      
+      if (p.marco) {
+        doc.texto(`Marco Atual: ${p.marco}`, 10);
+      }
+      
+      if (p.riscos.length > 0) {
+        doc.texto("Riscos:", 10, [40, 50, 45], true);
+        p.riscos.forEach((r) => {
+          doc.texto(`• ${r}`, 10);
+        });
+      }
+      
+      if (p.proximosPassos.length > 0) {
+        doc.texto("Próximos Passos:", 10, [40, 50, 45], true);
+        p.proximosPassos.forEach((p, i) => {
+          doc.texto(`${i + 1}. ${p}`, 10);
+        });
+      }
+      
+      doc.linhaH();
+    });
+    
+    doc.baixar(`status-report-${new Date().toISOString().split("T")[0]}.pdf`);
+    registrar("status-report", "Status report exportado em PDF.");
+    toast("Status report exportado em PDF.");
+  };
+
   return (
     <div>
       <Cabecalho
@@ -147,9 +208,14 @@ export default function StatusReport() {
         titulo="Status Report"
         desc="Acompanhamento do status de projetos e iniciativas de GRC, com métricas de progresso, marcos e próximos passos."
         acao={
-          <button onClick={() => { setEditando(true); setForm({}); }} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2.5 text-[13px] font-bold text-lime shadow-sm transition hover:bg-pine-deep active:scale-[0.98]">
-            <Ic name="plus" size={14} sw={2.6} /> Novo Projeto
-          </button>
+          <div className="flex gap-2">
+            <button onClick={baixarPdf} className="inline-flex items-center gap-2 rounded-md border border-sand bg-cream px-3 py-2.5 text-[13px] font-bold text-ink-soft shadow-sm transition hover:border-moss hover:text-moss active:scale-[0.98]">
+              <Ic name="download" size={14} /> Download PDF
+            </button>
+            <button onClick={() => { setEditando(true); setForm({}); }} className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2.5 text-[13px] font-bold text-lime shadow-sm transition hover:bg-pine-deep active:scale-[0.98]">
+              <Ic name="plus" size={14} sw={2.6} /> Novo Projeto
+            </button>
+          </div>
         }
       />
 
@@ -181,6 +247,55 @@ export default function StatusReport() {
             </button>
           ))}
         </div>
+      </Reveal>
+
+      {/* Gráficos */}
+      <Reveal delay={80}>
+        <div className="mb-6 grid gap-4 lg:grid-cols-2">
+          {/* Gráfico de Pizza - Distribuição por Status */}
+          <div className="rounded-lg border border-sand bg-cream p-5">
+            <PieChart
+              title="Distribuição por Status"
+              data={[
+                { label: "Planejado", value: stats.planejado, color: "#78867c" },
+                { label: "Em Andamento", value: stats.em_andamento, color: "#d99a26" },
+                { label: "Concluído", value: stats.concluidos, color: "#2e6b54" },
+                { label: "Atrasado", value: stats.atrasados, color: "#bd4f26" },
+              ]}
+              size={250}
+            />
+          </div>
+
+          {/* Gráfico de Barras - Progresso dos Projetos */}
+          <div className="rounded-lg border border-sand bg-cream p-5">
+            <BarChart
+              title="Progresso dos Projetos (%)"
+              data={filtrados.map((p) => ({
+                label: p.nome.length > 15 ? p.nome.substring(0, 15) + "..." : p.nome,
+                value: p.progresso,
+                maxValue: 100,
+                color: p.status === "concluido" ? "#2e6b54" : p.status === "em_andamento" ? "#d99a26" : p.status === "atrasado" ? "#bd4f26" : "#78867c",
+              }))}
+              height={250}
+            />
+          </div>
+        </div>
+
+        {/* Gráfico de Gantt - Cronograma */}
+        {filtrados.length > 0 && (
+          <div className="mb-6 rounded-lg border border-sand bg-cream p-5">
+            <GanttChart
+              title="Cronograma dos Projetos"
+              data={filtrados.map((p) => ({
+                label: p.nome,
+                start: p.dataInicio,
+                end: p.dataFim,
+                status: p.status,
+              }))}
+              height={Math.max(200, filtrados.length * 40 + 50)}
+            />
+          </div>
+        )}
       </Reveal>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">

@@ -20,8 +20,11 @@ export default function Plans() {
   const dias = diasRestantesTrial(usuario.trialAte);
 
   const ativar = (planoId: "standard" | "business" | "completo") => {
-    setAtivando(planoId);
     const plano = PLANOS[planoId];
+    // Abrir link de pagamento do Mercado Pago
+    window.open(plano.linkPagamento, "_blank", "noopener,noreferrer");
+    
+    setAtivando(planoId);
     setTimeout(() => {
       ativarPlano(planoId);
       registrar("sistema", `Plano ${plano.nome} ativado (R$ ${plano.preco}/mês) por ${usuario.email}.`);
@@ -133,27 +136,27 @@ export default function Plans() {
 
       <Reveal delay={300}>
         <div className="mt-8 rounded-lg border border-sand bg-cream p-5">
-          <h3 className="font-display text-[16px] font-bold text-ink mb-3">Links Importantes</h3>
+          <h3 className="font-display text-[16px] font-bold text-ink mb-3">Links de Pagamento</h3>
           <div className="grid gap-3 md:grid-cols-3">
-            <a href="https://radargrc.com/planos/standard" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-md border border-sand bg-paper p-3 transition hover:border-moss hover:bg-moss/5">
+            <a href={PLANOS.standard.linkPagamento} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-md border border-sand bg-paper p-3 transition hover:border-moss hover:bg-moss/5">
               <Ic name="doc" size={18} className="text-moss" />
               <div>
                 <p className="text-[12px] font-bold text-ink">RADAR GRC STANDARD</p>
-                <p className="text-[11px] text-ink-soft">Ver detalhes do plano</p>
+                <p className="text-[11px] text-ink-soft">R$ {PLANOS.standard.preco}/mês</p>
               </div>
             </a>
-            <a href="https://radargrc.com/planos/business" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-md border border-sand bg-paper p-3 transition hover:border-moss hover:bg-moss/5">
+            <a href={PLANOS.business.linkPagamento} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-md border border-sand bg-paper p-3 transition hover:border-moss hover:bg-moss/5">
               <Ic name="doc" size={18} className="text-moss" />
               <div>
                 <p className="text-[12px] font-bold text-ink">RADAR GRC BUSINESS</p>
-                <p className="text-[11px] text-ink-soft">Ver detalhes do plano</p>
+                <p className="text-[11px] text-ink-soft">R$ {PLANOS.business.preco}/mês</p>
               </div>
             </a>
-            <a href="https://radargrc.com/planos/completo" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-md border border-sand bg-paper p-3 transition hover:border-moss hover:bg-moss/5">
+            <a href={PLANOS.completo.linkPagamento} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-md border border-sand bg-paper p-3 transition hover:border-moss hover:bg-moss/5">
               <Ic name="doc" size={18} className="text-moss" />
               <div>
                 <p className="text-[12px] font-bold text-ink">RADAR GRC COMPLETO</p>
-                <p className="text-[11px] text-ink-soft">Ver detalhes do plano</p>
+                <p className="text-[11px] text-ink-soft">R$ {PLANOS.completo.preco}/mês</p>
               </div>
             </a>
           </div>

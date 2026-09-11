@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
-import { DEMO_EMAIL, DEMO_SENHA, useAuth, validarEmailCorporativo } from "../auth";
+import { useAuth, validarEmailCorporativo } from "../auth";
 import { TRIAL_DIAS } from "../auth";
 import { Ic, MedidorSenha } from "./ui";
+import RecuperarSenha from "./RecuperarSenha";
 
 const EVENTOS = [
   { t: "Folha de pagamento", d: "Art. 7º, II · risco 6 · 680 titulares" },
@@ -105,12 +106,7 @@ function FormLogin({ onVoltar }: { onVoltar: () => void }) {
     if (r) setErroGeral(r);
   };
 
-  const usarDemo = () => {
-    setEmail(DEMO_EMAIL);
-    setSenha(DEMO_SENHA);
-    setErros({});
-    setErroGeral(null);
-  };
+  const [mostrarRecuperar, setMostrarRecuperar] = useState(false);
 
   const resetarAcesso = async () => {
     // Limpa todos os dados de autenticação
@@ -148,11 +144,8 @@ function FormLogin({ onVoltar }: { onVoltar: () => void }) {
       <button type="submit" disabled={carregando} className="group flex w-full items-center justify-center gap-2 rounded-md bg-pine py-2.5 text-[13.5px] font-bold text-lime shadow-sm transition hover:bg-pine-deep active:scale-[0.99] disabled:opacity-70">
         {carregando ? (<><Spinner /> Autenticando…</>) : (<>Entrar no painel <Ic name="arrow" size={14} className="transition-transform group-hover:translate-x-0.5" /></>)}
       </button>
-      <button type="button" onClick={usarDemo} disabled={carregando} className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-moss/50 bg-moss/8 py-2 text-[12px] font-bold text-moss transition hover:bg-moss/15 disabled:opacity-60">
-        <Ic name="spark" size={13} sw={2.4} /> Preencher conta de demonstração
-      </button>
-      <button type="button" onClick={resetarAcesso} disabled={carregando} className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-rust/50 bg-rust/8 py-2 text-[12px] font-bold text-rust transition hover:bg-rust/15 disabled:opacity-60">
-        <Ic name="refresh" size={13} sw={2.4} /> Resetar acesso (limpar cache)
+      <button type="button" onClick={() => setMostrarRecuperar(true)} className="text-[12px] font-bold text-moss transition hover:text-pine">
+        Esqueci minha senha
       </button>
     </form>
   );
@@ -243,6 +236,7 @@ function FormCadastro() {
 
 export default function AuthScreen({ onVoltar }: { onVoltar: () => void }) {
   const [modo, setModo] = useState<"login" | "cadastro">("login");
+  const [mostrarRecuperar, setMostrarRecuperar] = useState(false);
   return (
     <div className="protegido grid min-h-screen lg:grid-cols-[1.08fr_1fr]">
       {/* painel institucional */}
@@ -296,13 +290,18 @@ export default function AuthScreen({ onVoltar }: { onVoltar: () => void }) {
             <button type="button" onClick={() => setModo("cadastro")} className={`relative z-10 rounded-md py-2 text-[13px] font-bold transition-colors ${modo === "cadastro" ? "text-lime" : "text-ink-soft"}`}>Criar conta</button>
           </div>
 
-          {modo === "login" ? <FormLogin onVoltar={onVoltar} /> : <FormCadastro />}
+          {mostrarRecuperar ? (
+            <RecuperarSenha onFechar={() => setMostrarRecuperar(false)} onVoltar={onVoltar} />
+          ) : modo === "login" ? (
+            <FormLogin onVoltar={onVoltar} />
+          ) : (
+            <FormCadastro />
+          )}
 
           <div className="mt-5 flex items-center justify-between gap-3 border-t border-sand pt-4">
             <p className="flex items-center gap-1.5 text-[10.5px] font-semibold text-ink-faint">
               <Ic name="lock" size={11} sw={2.4} /> Acesso restrito a e-mail corporativo
             </p>
-            <p className="text-[10.5px] text-ink-faint">Demo: {DEMO_EMAIL}</p>
           </div>
         </div>
       </div>

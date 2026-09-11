@@ -1,13 +1,8 @@
-# ✅ Sistema Radar GRC - Resumo Completo das Implementações
+# ✅ Sistema Radar GRC - Resumo Final de Implementações
 
 ## 🎯 Visão Geral
 
-Sistema completo de Governança, Risco e Compliance (GRC) implementado com sucesso, incluindo:
-- Sistema de planos comerciais com limitações
-- Conta demo limitada
-- Sistema de bloqueio de funcionalidades
-- White Label completo
-- Integração com múltiplos frameworks
+Sistema completo de Governança, Risco e Compliance (GRC) implementado com sucesso, incluindo sistema de planos comerciais, conta demo limitada, sistema de bloqueio de funcionalidades, White Label completo e integração com múltiplos frameworks.
 
 ## 📋 Funcionalidades Implementadas
 
@@ -87,14 +82,16 @@ Adicionados na página de planos:
 13. **WHITE-LABEL-CORRIGIDO.md** - Documentação do White Label
 14. **PUBLICAR-GITHUB.md** - Guia de publicação
 15. **STATUS-FINAL.md** - Status final do sistema
+16. **RESUMO-COMPLETO.md** - Resumo completo das implementações
 
 ## 🔧 Arquivos Modificados
 
 1. **src/components/Plans.tsx** - Atualizado com novos planos e links
 2. **src/App.tsx** - Adicionadas verificações de permissões em todas as rotas
-3. **src/auth.tsx** - Adicionado suporte a planos
+3. **src/auth.tsx** - Adicionado suporte a planos e trial de 3 dias
 4. **src/components/TrialGate.tsx** - Adicionado texto "7 dias grátis"
 5. **src/lib/planos.ts** - Atualizados os preços dos planos
+6. **src/hooks/usePermissoes.ts** - Conta demo limitada a 2 funções
 
 ## 🎨 Funcionalidades do Sistema
 
@@ -138,15 +135,18 @@ Adicionados na página de planos:
 
 ### Teste 1: Conta Demo
 1. Login: `demo@radarlgpd.app` / `demo1234`
-2. Verifique acesso apenas ao dashboard
-3. Tente acessar ISO → deve mostrar tela de bloqueio
-4. Clique "Ver Planos" → deve redirecionar
+2. Verifique acesso apenas a 2 funções: Dashboard e Planos
+3. Tente acessar outras funcionalidades (ISO, IA, etc.)
+4. Verifique que aparece a tela "Funcionalidade Bloqueada"
+5. Clique em "Ver Planos" e verifique que redireciona para a página de planos
+6. Verifique que a conta demo tem acesso por apenas 3 dias
 
 ### Teste 2: Trial
-1. Crie conta com e-mail corporativo
-2. Verifique 7 dias de trial
-3. Após expirar, verifique tela TrialGate
-4. Escolha plano e ative
+1. Crie uma nova conta com e-mail corporativo
+2. Verifique que tem 3 dias de trial
+3. Acesse todas as funcionalidades do plano
+4. Após 3 dias (ou simulando expiração), verifique que aparece a tela TrialGate
+5. Escolha um plano e verifique que as funcionalidades são liberadas
 
 ### Teste 3: Planos Pagos
 1. Login com plano Standard (R$ 190/mês)
@@ -166,7 +166,8 @@ Adicionados na página de planos:
 
 ✅ Sistema de planos implementado  
 ✅ Limitações funcionando  
-✅ Conta demo limitada  
+✅ Conta demo limitada a 2 funções  
+✅ Trial de 3 dias  
 ✅ TrialGate funcionando  
 ✅ Links dos planos adicionados  
 ✅ White Label funcional  
@@ -185,7 +186,8 @@ Adicionados na página de planos:
 
 - O sistema está 100% funcional
 - As limitações são aplicadas em todas as rotas
-- A conta demo tem acesso limitado ao dashboard
+- A conta demo tem acesso limitado a 2 funções (Dashboard e Planos)
+- A conta demo tem acesso por apenas 3 dias
 - Os links dos planos precisam ser atualizados
 - O sistema está pronto para integração com gateway de pagamento
 - Build bem-sucedido sem erros
@@ -194,7 +196,8 @@ Adicionados na página de planos:
 
 O sistema Radar GRC está completamente implementado com todas as funcionalidades solicitadas:
 - ✅ Sistema de planos comerciais com valores atualizados
-- ✅ Conta demo limitada a apenas uma função (dashboard)
+- ✅ Conta demo limitada a apenas 2 funções (Dashboard e Planos)
+- ✅ Conta demo com acesso por apenas 3 dias
 - ✅ Sistema de bloqueio de funcionalidades
 - ✅ Links para os planos na página de planos e no sistema
 - ✅ White Label completo

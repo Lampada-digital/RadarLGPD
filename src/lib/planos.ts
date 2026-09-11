@@ -8,6 +8,7 @@ export interface PlanoConfig {
   preco: number;
   descricao: string;
   recursos: string[];
+  linkPagamento: string; // Link do Mercado Pago
   limites: {
     usuarios: number; // -1 = ilimitado
     exportacoes: boolean;
@@ -30,6 +31,7 @@ export const PLANOS: Record<PlanoId, PlanoConfig> = {
       "Fila de titulares (15d/30d)",
       "Até 3 usuários"
     ],
+    linkPagamento: "https://mpago.la/15FRXbU",
     limites: {
       usuarios: 3,
       exportacoes: false,
@@ -59,6 +61,7 @@ export const PLANOS: Record<PlanoId, PlanoConfig> = {
       "Pacotes de políticas (PDF/MD)",
       "Até 10 usuários"
     ],
+    linkPagamento: "https://mpago.la/1yUEzfz",
     limites: {
       usuarios: 10,
       exportacoes: true,
@@ -84,7 +87,7 @@ export const PLANOS: Record<PlanoId, PlanoConfig> = {
   completo: {
     id: "completo",
     nome: "RADAR GRC COMPLETO",
-    preco: 249,
+    preco: 459,
     descricao: "Tudo, sem limite, para toda a organização.",
     recursos: [
       "Tudo do Business",
@@ -93,6 +96,7 @@ export const PLANOS: Record<PlanoId, PlanoConfig> = {
       "Todos os frameworks ISO",
       "Suporte prioritário"
     ],
+    linkPagamento: "https://mpago.la/1MDpTpD",
     limites: {
       usuarios: -1, // ilimitado
       exportacoes: true,
