@@ -6,20 +6,22 @@ O sistema de planos foi completamente implementado com as seguintes funcionalida
 
 ### 1. Três Planos Comerciais
 
-#### RADAR GRC STANDARD (R$ 79/mês)
+#### RADAR GRC STANDARD (R$ 190/mês)
 - LGPD ilimitado (art. 37)
 - GDPR ilimitado (art. 30)
 - Matriz de risco em tempo real
 - Fila de titulares (15d/30d)
 - Até 3 usuários
 - Funcionalidades bloqueadas: ISO, IA, Cookies, SIEM, Pentest, etc.
+- 7 dias grátis
 
-#### RADAR GRC BUSINESS (R$ 149/mês) - Mais Popular
+#### RADAR GRC BUSINESS (R$ 350/mês) - Mais Popular
 - Tudo do Standard
 - ISO 27001-27002-27701 + SOC 2 + PCI-DSS
 - Assistente de IA ilimitado
 - Pacotes de políticas (PDF/MD)
 - Até 10 usuários
+- 7 dias grátis
 
 #### RADAR GRC COMPLETO (R$ 249/mês)
 - Tudo do Business
@@ -28,6 +30,7 @@ O sistema de planos foi completamente implementado com as seguintes funcionalida
 - Todos os frameworks ISO
 - Suporte prioritário
 - Todas as funcionalidades liberadas
+- 7 dias grátis
 
 ### 2. Conta Demo Limitada
 - Conta `demo@radarlgpd.app` / `demo1234`

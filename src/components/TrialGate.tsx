@@ -35,6 +35,7 @@ export default function TrialGate() {
                   <span className="font-display text-[36px] font-extrabold text-ink">R$ {plano.preco}</span>
                   <span className="text-[14px] text-ink-soft">/mês</span>
                 </div>
+                <p className="mt-2 text-[11px] text-ink-soft">7 dias grátis</p>
               </div>
 
               <ul className="mb-6 flex-1 space-y-2">

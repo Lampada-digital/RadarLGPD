@@ -21,7 +21,7 @@ export const PLANOS: Record<PlanoId, PlanoConfig> = {
   standard: {
     id: "standard",
     nome: "RADAR GRC STANDARD",
-    preco: 79,
+    preco: 190,
     descricao: "Privacidade LGPD + GDPR no essencial.",
     recursos: [
       "LGPD ilimitado (art. 37)",
@@ -50,7 +50,7 @@ export const PLANOS: Record<PlanoId, PlanoConfig> = {
   business: {
     id: "business",
     nome: "RADAR GRC BUSINESS",
-    preco: 149,
+    preco: 350,
     descricao: "Frameworks, IA e documentos para auditoria.",
     recursos: [
       "Tudo do Standard",
