@@ -81,7 +81,7 @@ function Spinner() {
   return <span className="inline-block size-4 animate-spin rounded-full border-2 border-lime/30 border-t-lime" />;
 }
 
-function FormLogin({ onVoltar }: { onVoltar: () => void }) {
+function FormLogin({ onVoltar, onEsqueciSenha }: { onVoltar: () => void; onEsqueciSenha: () => void }) {
   const { entrar } = useAuth();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -104,18 +104,6 @@ function FormLogin({ onVoltar }: { onVoltar: () => void }) {
     const r = await entrar(email, senha, lembrar);
     setCarregando(false);
     if (r) setErroGeral(r);
-  };
-
-  const [mostrarRecuperar, setMostrarRecuperar] = useState(false);
-
-  const resetarAcesso = async () => {
-    // Limpa todos os dados de autenticação
-    localStorage.clear();
-    sessionStorage.clear();
-    setErros({});
-    setErroGeral("Acesso resetado! Tente fazer login novamente.");
-    setEmail("");
-    setSenha("");
   };
 
   return (
@@ -144,7 +132,7 @@ function FormLogin({ onVoltar }: { onVoltar: () => void }) {
       <button type="submit" disabled={carregando} className="group flex w-full items-center justify-center gap-2 rounded-md bg-pine py-2.5 text-[13.5px] font-bold text-lime shadow-sm transition hover:bg-pine-deep active:scale-[0.99] disabled:opacity-70">
         {carregando ? (<><Spinner /> Autenticando…</>) : (<>Entrar no painel <Ic name="arrow" size={14} className="transition-transform group-hover:translate-x-0.5" /></>)}
       </button>
-      <button type="button" onClick={() => setMostrarRecuperar(true)} className="text-[12px] font-bold text-moss transition hover:text-pine">
+      <button type="button" onClick={onEsqueciSenha} className="text-[12px] font-bold text-moss transition hover:text-pine">
         Esqueci minha senha
       </button>
     </form>
@@ -237,6 +225,7 @@ function FormCadastro() {
 export default function AuthScreen({ onVoltar }: { onVoltar: () => void }) {
   const [modo, setModo] = useState<"login" | "cadastro">("login");
   const [mostrarRecuperar, setMostrarRecuperar] = useState(false);
+
   return (
     <div className="protegido grid min-h-screen lg:grid-cols-[1.08fr_1fr]">
       {/* painel institucional */}
@@ -293,7 +282,7 @@ export default function AuthScreen({ onVoltar }: { onVoltar: () => void }) {
           {mostrarRecuperar ? (
             <RecuperarSenha onFechar={() => setMostrarRecuperar(false)} onVoltar={onVoltar} />
           ) : modo === "login" ? (
-            <FormLogin onVoltar={onVoltar} />
+            <FormLogin onVoltar={onVoltar} onEsqueciSenha={() => setMostrarRecuperar(true)} />
           ) : (
             <FormCadastro />
           )}
