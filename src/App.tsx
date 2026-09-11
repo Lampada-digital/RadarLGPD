@@ -7,6 +7,7 @@ import { iniciarProtecao } from "./protection";
 import { Ic, ToastHost, Cabecalho, Reveal } from "./components/ui";
 import { BrandedHeader, BrandedSidebar, BrandedLogo } from "./components/BrandedComponents";
 import { useBranding } from "./lib/branding";
+import { usePermissoes } from "./hooks/usePermissoes";
 import AuthScreen from "./components/AuthScreen";
 import Landing from "./components/Landing";
 import Dashboard from "./components/Dashboard";
@@ -17,7 +18,9 @@ import Requests from "./components/Requests";
 import Gdpr from "./components/Gdpr";
 import GdprAvancado from "./components/GdprAvancado";
 import Iso from "./components/Iso";
-import Plans, { TrialGate, diasRestantesTrial } from "./components/Plans";
+import Plans from "./components/Plans";
+import { diasRestantesTrial } from "./components/Plans";
+import TrialGate from "./components/TrialGate";
 import AdminPanel from "./components/AdminPanel";
 import Reports from "./components/Reports";
 import Security from "./components/Security";
@@ -31,6 +34,7 @@ import PrivacyByDesign from "./components/PrivacyByDesign";
 import AuditoriaTI from "./components/AuditoriaTI";
 import Comite from "./components/Comite";
 import StatusReport from "./components/StatusReport";
+import LockedFeature from "./components/LockedFeature";
 import WhiteLabelAdmin from "./components/WhiteLabelAdmin";
 
 type Page =
@@ -161,6 +165,7 @@ function Shell() {
   const { usuario, sair } = useAuth();
   const { score, solicitacoes, registrar } = useStore();
   const { branding } = useBranding();
+  const { temAcesso, isDemo } = usePermissoes();
   const [pagina, setPagina] = useState<Page>("dashboard");
   const [menuAberto, setMenuAberto] = useState(false);
   const [menuUser, setMenuUser] = useState(false);
@@ -195,13 +200,29 @@ function Shell() {
         <div key={sec.secao}>
           <p className={`px-2.5 pt-4 pb-1.5 text-[9.5px] font-bold tracking-[0.2em] uppercase ${sec.admin ? "text-lime/60" : "text-cream/35"}`}>{sec.secao}</p>
           <div className="space-y-0.5">
-            {sec.itens.map((n) => (
-              <button key={n.id} onClick={() => irPara(n.id)} className={`group flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-semibold transition-all duration-150 ${pagina === n.id ? "bg-lime text-pine shadow-sm" : "text-cream/65 hover:bg-pine-line/60 hover:text-cream"}`}>
-                <Ic name={n.icone} size={16} sw={pagina === n.id ? 2.1 : 1.8} className={pagina === n.id ? "" : "transition-transform group-hover:scale-110"} />
-                <span className="flex-1 text-left">{n.label}</span>
-                {n.badge === "ia" && <span className="rounded-sm bg-lime px-1.5 py-0.5 text-[8.5px] font-extrabold tracking-wider text-pine uppercase">IA</span>}
-              </button>
-            ))}
+            {sec.itens.map((n) => {
+              const temAcessoItem = temAcesso(n.id);
+              const isBloqueado = !temAcessoItem && !isDemo;
+              
+              return (
+                <button 
+                  key={n.id} 
+                  onClick={() => irPara(n.id)} 
+                  className={`group flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-semibold transition-all duration-150 ${
+                    pagina === n.id 
+                      ? "bg-lime text-pine shadow-sm" 
+                      : isBloqueado
+                      ? "text-cream/30 hover:bg-pine-line/40 hover:text-cream/50"
+                      : "text-cream/65 hover:bg-pine-line/60 hover:text-cream"
+                  }`}
+                >
+                  <Ic name={n.icone} size={16} sw={pagina === n.id ? 2.1 : 1.8} className={pagina === n.id ? "" : "transition-transform group-hover:scale-110"} />
+                  <span className="flex-1 text-left">{n.label}</span>
+                  {isBloqueado && <Ic name="lock" size={12} className="text-cream/40" />}
+                  {n.badge === "ia" && !isBloqueado && <span className="rounded-sm bg-lime px-1.5 py-0.5 text-[8.5px] font-extrabold tracking-wider text-pine uppercase">IA</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
       ))}
@@ -285,25 +306,25 @@ function Shell() {
         <main key={pagina} className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-[1160px] px-4 py-6 sm:px-6">
             {pagina === "dashboard" && <Dashboard irPara={irPara} />}
-            {pagina === "assistente" && <Assistant onUpgrade={() => irPara("planos")} />}
-            {pagina === "lgpd-registro" && <Activities onUpgrade={() => irPara("planos")} />}
-            {pagina === "lgpd-risco" && <RiskMatrix />}
-            {pagina === "lgpd-titulares" && <Requests onUpgrade={() => irPara("planos")} />}
-            {pagina === "lgpd-bases" && <BasesLegais />}
-            {pagina === "gdpr-ropa" && <Gdpr onUpgrade={() => irPara("planos")} />}
-            {pagina === "gdpr-avancado" && <GdprAvancado />}
-            {pagina === "iso" && <Iso onUpgrade={() => irPara("planos")} />}
-            {pagina === "ai-gov" && <Iso onUpgrade={() => irPara("planos")} inicial="ai-gov" />}
-            {pagina === "cookies" && <Cookies />}
-            {pagina === "gap-analysis" && <GapAnalysis />}
-            {pagina === "siem" && <Siem />}
-            {pagina === "pentest-lab" && <PentestLab />}
-            {pagina === "privacy-by-design" && <PrivacyByDesign />}
-            {pagina === "auditoria-ti" && <AuditoriaTI />}
-            {pagina === "comite" && <Comite />}
-            {pagina === "status-report" && <StatusReport />}
-            {pagina === "relatorios" && <Reports />}
-            {pagina === "seguranca" && <Security />}
+            {pagina === "assistente" && (temAcesso("assistente") || isDemo ? <Assistant onUpgrade={() => irPara("planos")} /> : <LockedFeature featureName="Assistente IA" />)}
+            {pagina === "lgpd-registro" && (temAcesso("lgpd-registro") || isDemo ? <Activities onUpgrade={() => irPara("planos")} /> : <LockedFeature featureName="Registro LGPD" />)}
+            {pagina === "lgpd-risco" && (temAcesso("lgpd-risco") || isDemo ? <RiskMatrix /> : <LockedFeature featureName="Matriz de Risco" />)}
+            {pagina === "lgpd-titulares" && (temAcesso("lgpd-titulares") || isDemo ? <Requests onUpgrade={() => irPara("planos")} /> : <LockedFeature featureName="Titulares" />)}
+            {pagina === "lgpd-bases" && (temAcesso("lgpd-bases") || isDemo ? <BasesLegais /> : <LockedFeature featureName="Bases Legais" />)}
+            {pagina === "gdpr-ropa" && (temAcesso("gdpr-ropa") || isDemo ? <Gdpr onUpgrade={() => irPara("planos")} /> : <LockedFeature featureName="ROPA GDPR" />)}
+            {pagina === "gdpr-avancado" && (temAcesso("gdpr-avancado") || isDemo ? <GdprAvancado /> : <LockedFeature featureName="GDPR Avançado" />)}
+            {pagina === "iso" && (temAcesso("iso") || isDemo ? <Iso onUpgrade={() => irPara("planos")} /> : <LockedFeature featureName="Frameworks ISO" />)}
+            {pagina === "ai-gov" && (temAcesso("ai-gov") || isDemo ? <Iso onUpgrade={() => irPara("planos")} inicial="ai-gov" /> : <LockedFeature featureName="Governança de IA" />)}
+            {pagina === "cookies" && (temAcesso("cookies") || isDemo ? <Cookies /> : <LockedFeature featureName="Gestão de Cookies" />)}
+            {pagina === "gap-analysis" && (temAcesso("gap-analysis") || isDemo ? <GapAnalysis /> : <LockedFeature featureName="Gap Analysis" />)}
+            {pagina === "siem" && (temAcesso("siem") || isDemo ? <Siem /> : <LockedFeature featureName="SIEM" />)}
+            {pagina === "pentest-lab" && (temAcesso("pentest-lab") || isDemo ? <PentestLab /> : <LockedFeature featureName="Laboratório Pentest" />)}
+            {pagina === "privacy-by-design" && (temAcesso("privacy-by-design") || isDemo ? <PrivacyByDesign /> : <LockedFeature featureName="Privacy by Design" />)}
+            {pagina === "auditoria-ti" && (temAcesso("auditoria-ti") || isDemo ? <AuditoriaTI /> : <LockedFeature featureName="Auditoria TI" />)}
+            {pagina === "comite" && (temAcesso("comite") || isDemo ? <Comite /> : <LockedFeature featureName="Comitê" />)}
+            {pagina === "status-report" && (temAcesso("status-report") || isDemo ? <StatusReport /> : <LockedFeature featureName="Status Report" />)}
+            {pagina === "relatorios" && (temAcesso("relatorios") || isDemo ? <Reports /> : <LockedFeature featureName="Relatórios" />)}
+            {pagina === "seguranca" && (temAcesso("seguranca") || isDemo ? <Security /> : <LockedFeature featureName="Segurança" />)}
             {pagina === "planos" && <Plans />}
             {pagina === "admin" && ehAdmin && <AdminPanel />}
           </div>
