@@ -33,12 +33,227 @@ body,
 
 body {
   margin: 0;
-  background-color: var(--color-paper);
-  color: var(--color-ink);
+  background-color: var(--brand-background, var(--color-paper));
+  color: var(--brand-text, var(--color-ink));
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   background-image: radial-gradient(rgba(24, 38, 32, 0.07) 1px, transparent 1px);
   background-size: 22px 22px;
+}
+
+/* Aplicar branding globalmente */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Header e Sidebar */
+[data-branding="header"],
+[data-branding="sidebar"] {
+  background-color: var(--brand-primary, #132e26) !important;
+  color: white !important;
+}
+
+/* Botões primários */
+button[data-branding="button-primary"],
+.btn-primary {
+  background-color: var(--brand-primary, #132e26) !important;
+  color: white !important;
+}
+
+button[data-branding="button-primary"]:hover {
+  opacity: 0.9;
+}
+
+/* Botões secundários */
+button[data-branding="button-secondary"],
+.btn-secondary {
+  background-color: var(--brand-secondary, #c9e94f) !important;
+  color: var(--brand-text, #182620) !important;
+}
+
+/* Links */
+a {
+  color: var(--brand-primary, #132e26);
+}
+
+a:hover {
+  opacity: 0.8;
+}
+
+/* Cards e containers */
+.card {
+  background-color: white;
+  border: 1px solid var(--brand-primary, #132e26);
+}
+
+/* Ícones e elementos de destaque */
+.icon-primary {
+  color: var(--brand-primary, #132e26);
+}
+
+.icon-secondary {
+  color: var(--brand-secondary, #c9e94f);
+}
+
+/* Textos */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--brand-text, #182620);
+}
+
+/* Footer */
+[data-branding="footer"] {
+  background-color: var(--brand-primary, #132e26);
+  color: white;
+}
+
+/* Inputs */
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--brand-primary, #132e26) !important;
+}
+
+/* Badges e tags */
+.badge-primary {
+  background-color: var(--brand-primary, #132e26);
+  color: white;
+}
+
+.badge-secondary {
+  background-color: var(--brand-secondary, #c9e94f);
+  color: var(--brand-text, #182620);
+}
+
+/* Progress bars */
+.progress-bar {
+  background-color: var(--brand-primary, #132e26);
+}
+
+/* Alerts */
+.alert-primary {
+  background-color: var(--brand-primary, #132e26);
+  color: white;
+  border-color: var(--brand-primary, #132e26);
+}
+
+/* Tabs */
+.tab-active {
+  border-bottom-color: var(--brand-primary, #132e26) !important;
+  color: var(--brand-primary, #132e26) !important;
+}
+
+/* Checkboxes e radios */
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  background-color: var(--brand-primary, #132e26) !important;
+  border-color: var(--brand-primary, #132e26) !important;
+}
+
+/* Switches */
+.switch-active {
+  background-color: var(--brand-primary, #132e26) !important;
+}
+
+/* Tooltips */
+.tooltip {
+  background-color: var(--brand-primary, #132e26);
+  color: white;
+}
+
+/* Modais */
+.modal-header {
+  background-color: var(--brand-primary, #132e26);
+  color: white;
+}
+
+/* Tabelas */
+th {
+  background-color: var(--brand-primary, #132e26);
+  color: white;
+}
+
+tr:hover {
+  background-color: color-mix(in srgb, var(--brand-secondary, #c9e94f) 10%, transparent);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar-thumb {
+  background-color: var(--brand-primary, #132e26);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--brand-primary, #132e26) 80%, black);
+}
+
+/* Loading spinners */
+.spinner {
+  border-top-color: var(--brand-primary, #132e26);
+}
+
+/* Notifications */
+.notification {
+  border-left: 4px solid var(--brand-primary, #132e26);
+}
+
+/* Dropdown menus */
+.dropdown-item:hover {
+  background-color: color-mix(in srgb, var(--brand-secondary, #c9e94f) 20%, transparent);
+}
+
+/* Pagination */
+.page-active {
+  background-color: var(--brand-primary, #132e26);
+  color: white;
+}
+
+/* Breadcrumbs */
+.breadcrumb a:hover {
+  color: var(--brand-primary, #132e26);
+}
+
+/* Search bar */
+.search-bar:focus {
+  border-color: var(--brand-primary, #132e26);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-primary, #132e26) 20%, transparent);
+}
+
+/* Status indicators */
+.status-success {
+  color: var(--brand-primary, #132e26);
+}
+
+.status-warning {
+  color: var(--brand-secondary, #c9e94f);
+}
+
+/* Charts and graphs */
+.chart-primary {
+  fill: var(--brand-primary, #132e26);
+  stroke: var(--brand-primary, #132e26);
+}
+
+.chart-secondary {
+  fill: var(--brand-secondary, #c9e94f);
+  stroke: var(--brand-secondary, #c9e94f);
+}
+
+/* Avatar */
+.avatar {
+  background-color: var(--brand-primary, #132e26);
+  color: white;
+}
+
+/* Logo container */
+.logo-container img {
+  max-height: 60px;
+  width: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .logo-container img {
+    max-height: 40px;
+  }
 }
 
 ::selection {
