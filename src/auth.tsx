@@ -171,6 +171,8 @@ interface AuthCtx {
   adminToggleBloqueio: (orgId: string, id: string) => void;
   adminExcluirUsuario: (orgId: string, id: string, selfId: string) => void;
   adminRedefinirSenha: (orgId: string, id: string) => { ok: boolean; senhaTemporaria?: string };
+  recuperarSenha: (email: string) => Promise<{ sucesso: boolean; codigo?: string; erro?: string }>;
+  redefinirSenha: (email: string, codigo: string, novaSenha: string) => Promise<{ sucesso: boolean; erro?: string }>;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -520,9 +522,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { ok: true, senhaTemporaria: senha };
   }, []);
 
+  const recuperarSenha = useCallback(async (email: string): Promise<{ sucesso: boolean; codigo?: string; erro?: string }> => {
+    const mail = email.trim().toLowerCase();
+    const v = validarEmailCorporativo(mail);
+    if (!v.ok) return { sucesso: false, erro: v.msg };
+    
+    const lista = lerUsers();
+    const usuario = lista.find((x) => x.email === mail);
+    
+    if (!usuario) {
+      return { sucesso: false, erro: "E-mail não encontrado" };
+    }
+    
+    // Gerar código de 6 dígitos
+    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Armazenar código temporariamente (em produção, isso seria enviado por email)
+    localStorage.setItem(`recuperacao_${mail}`, JSON.stringify({
+      codigo,
+      expiraEm: Date.now() + 10 * 60 * 1000, // 10 minutos
+    }));
+    
+    registrarSeguranca("recuperacao_senha", mail, `Código de recuperação gerado: ${codigo}`);
+    
+    return { sucesso: true, codigo };
+  }, []);
+
+  const redefinirSenha = useCallback(async (email: string, codigo: string, novaSenha: string): Promise<{ sucesso: boolean; erro?: string }> => {
+    const mail = email.trim().toLowerCase();
+    
+    // Verificar código
+    const recuperacaoStr = localStorage.getItem(`recuperacao_${mail}`);
+    if (!recuperacaoStr) {
+      return { sucesso: false, erro: "Código de recuperação não encontrado" };
+    }
+    
+    const recuperacao = JSON.parse(recuperacaoStr);
+    
+    if (Date.now() > recuperacao.expiraEm) {
+      localStorage.removeItem(`recuperacao_${mail}`);
+      return { sucesso: false, erro: "Código expirado" };
+    }
+    
+    if (codigo !== recuperacao.codigo) {
+      return { sucesso: false, erro: "Código incorreto" };
+    }
+    
+    // Validar nova senha
+    const erroSenha = validarSenhaForte(novaSenha);
+    if (erroSenha) {
+      return { sucesso: false, erro: erroSenha };
+    }
+    
+    // Atualizar senha
+    const lista = lerUsers();
+    const usuario = lista.find((x) => x.email === mail);
+    
+    if (!usuario) {
+      return { sucesso: false, erro: "Usuário não encontrado" };
+    }
+    
+    const salt = uid();
+    const hash = await hashSenha(novaSenha, salt);
+    
+    const listaAtualizada = lista.map((x) => 
+      x.email === mail ? { ...x, salt, hash } : x
+    );
+    
+    gravarUsers(listaAtualizada);
+    localStorage.removeItem(`recuperacao_${mail}`);
+    
+    registrarSeguranca("recuperacao_senha", mail, "Senha redefinida com sucesso");
+    
+    return { sucesso: true };
+  }, []);
+
   const v = useMemo(
-    () => ({ usuario, pronto, entrar, cadastrar, sair, atualizarPerfil, trocarSenha, ativarPlano, adminCriarUsuario, adminToggleBloqueio, adminExcluirUsuario, adminRedefinirSenha }),
-    [usuario, pronto, entrar, cadastrar, sair, atualizarPerfil, trocarSenha, ativarPlano, adminCriarUsuario, adminToggleBloqueio, adminExcluirUsuario, adminRedefinirSenha]
+    () => ({ usuario, pronto, entrar, cadastrar, sair, atualizarPerfil, trocarSenha, ativarPlano, adminCriarUsuario, adminToggleBloqueio, adminExcluirUsuario, adminRedefinirSenha, recuperarSenha, redefinirSenha }),
+    [usuario, pronto, entrar, cadastrar, sair, atualizarPerfil, trocarSenha, ativarPlano, adminCriarUsuario, adminToggleBloqueio, adminExcluirUsuario, adminRedefinirSenha, recuperarSenha, redefinirSenha]
   );
 
   return <Ctx.Provider value={v}>{children}</Ctx.Provider>;
