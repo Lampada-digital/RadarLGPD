@@ -23,6 +23,7 @@ import Security from "./components/Security";
 import Cookies from "./components/Cookies";
 import AccountModal from "./components/AccountModal";
 import GapAnalysis from "./components/GapAnalysis";
+import { ScreenProtection } from "./components/ScreenProtection";
 import Siem from "./components/Siem";
 import PentestLab from "./components/PentestLab";
 import PrivacyByDesign from "./components/PrivacyByDesign";
@@ -37,7 +38,7 @@ type Page =
   | "gdpr-ropa" | "gdpr-avancado"
   | "iso" | "ai-gov" | "cookies"
   | "gap-analysis" | "siem" | "pentest-lab" | "privacy-by-design" | "auditoria-ti" | "comite" | "status-report"
-  | "relatorios" | "seguranca" | "planos" | "admin" | "white-label";
+  | "relatorios" | "seguranca" | "planos" | "admin";
 
 const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; icone: string; badge?: "ia" }[] }[] = [
   { secao: "Operação", itens: [
@@ -77,7 +78,6 @@ const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; i
   ]},
   { secao: "Administração", admin: true, itens: [
     { id: "admin", label: "Painel admin", icone: "shield" },
-    { id: "white-label", label: "White Label", icone: "palette" },
   ]},
 ];
 
@@ -104,7 +104,6 @@ const TITULOS: Record<Page, string> = {
   seguranca: "Central de segurança",
   planos: "Assinatura & plano",
   admin: "Painel administrativo",
-  "white-label": "White Label - Personalização de Marca",
 };
 
 function Splash() {
@@ -224,6 +223,7 @@ function Shell() {
 
   return (
     <div className="protegido flex h-full">
+      <ScreenProtection />
       <BrandedSidebar className="rail-texture sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-pine-line lg:flex">
         {SidebarInner}
       </BrandedSidebar>
@@ -304,7 +304,6 @@ function Shell() {
             {pagina === "seguranca" && <Security />}
             {pagina === "planos" && <Plans />}
             {pagina === "admin" && ehAdmin && <AdminPanel />}
-            {pagina === "white-label" && ehAdmin && <WhiteLabelAdmin />}
           </div>
         </main>
       </div>

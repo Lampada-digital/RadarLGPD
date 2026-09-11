@@ -54,11 +54,12 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Aplicar cores dinamicamente no CSS
-    document.documentElement.style.setProperty('--brand-primary', branding.corPrimaria);
-    document.documentElement.style.setProperty('--brand-secondary', branding.corSecundaria);
-    document.documentElement.style.setProperty('--brand-background', branding.corFundo);
-    document.documentElement.style.setProperty('--brand-text', branding.corTexto);
+    // Aplicar cores dinamicamente no CSS global
+    const root = document.documentElement;
+    root.style.setProperty('--brand-primary', branding.corPrimaria);
+    root.style.setProperty('--brand-secondary', branding.corSecundaria);
+    root.style.setProperty('--brand-background', branding.corFundo);
+    root.style.setProperty('--brand-text', branding.corTexto);
     
     // Atualizar título da página
     document.title = branding.nomePlataforma;
@@ -70,6 +71,9 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
         link.href = branding.logoUrl;
       }
     }
+    
+    // Forçar re-render de todos os componentes
+    window.dispatchEvent(new CustomEvent('branding-updated'));
   }, [branding]);
 
   const updateBranding = (config: Partial<BrandingConfig>) => {
