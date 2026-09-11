@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 export type Papel = "admin" | "operador";
 export type PlanoConta = "trial" | "standard" | "business" | "completo";
 
-export const TRIAL_DIAS = 7;
+export const TRIAL_DIAS = 3;
 export const DEMO_EMAIL = "demo@radarlgpd.app";
 export const DEMO_SENHA = "demo1234";
 /* conta root: administradora master, plano completo, sem marcação de demonstração */

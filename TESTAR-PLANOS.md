@@ -4,16 +4,17 @@
 
 ### 1. Testar Conta Demo
 1. Faça login com `demo@radarlgpd.app` / `demo1234`
-2. Verifique que apenas o dashboard está acessível
+2. Verifique que tem acesso apenas a 2 funções: Dashboard e Planos
 3. Tente acessar outras funcionalidades (ISO, IA, etc.)
 4. Verifique que aparece a tela "Funcionalidade Bloqueada"
 5. Clique em "Ver Planos" e verifique que redireciona para a página de planos
+6. Verifique que a conta demo tem acesso por apenas 3 dias
 
 ### 2. Testar Trial
 1. Crie uma nova conta com e-mail corporativo
-2. Verifique que tem 7 dias de trial
-3. Acesse todas as funcionalidades
-4. Após 7 dias (ou simulando expiração), verifique que aparece a tela TrialGate
+2. Verifique que tem 3 dias de trial
+3. Acesse todas as funcionalidades do plano
+4. Após 3 dias (ou simulando expiração), verifique que aparece a tela TrialGate
 5. Escolha um plano e verifique que as funcionalidades são liberadas
 
 ### 3. Testar Planos Pagos

@@ -34,7 +34,10 @@ Criado um sistema completo de planos com limitações específicas para cada ní
 
 ### 2. Conta de Demonstração Limitada
 
-A conta `demo@radarlgpd.app` agora tem acesso **apenas ao dashboard**. Todas as outras funcionalidades estão bloqueadas e mostram uma tela de upgrade.
+A conta `demo@radarlgpd.app` / `demo1234` tem:
+- **Acesso limitado a apenas 2 funções**: Dashboard e Planos
+- **Período de acesso**: 3 dias apenas
+- Todas as outras funcionalidades estão bloqueadas e mostram uma tela de upgrade
 
 ### 3. Sistema de Bloqueio de Funcionalidades
 
