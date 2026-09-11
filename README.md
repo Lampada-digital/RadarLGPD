@@ -92,17 +92,6 @@ npm run preview
 2. O Vercel detectará automaticamente as configurações
 3. Deploy automático a cada push
 
-### Render
-
-1. Conecte seu repositório GitHub ao Render
-2. Selecione **Static Site**
-3. Configure:
-   - Build Command: `npm run build`
-   - Publish Directory: `dist`
-4. Deploy automático a cada push
-
-Veja [DEPLOY-RENDER.md](./DEPLOY-RENDER.md) para mais detalhes.
-
 ### GitHub Pages
 
 1. Configure o GitHub Pages para usar a branch `gh-pages`
@@ -125,7 +114,6 @@ radar-grpc/
 │   └── ...
 ├── public/              # Arquivos públicos
 ├── dist/                # Build de produção
-├── render.yaml          # Configuração do Render
 ├── package.json         # Dependências
 └── vite.config.ts       # Configuração do Vite
 ```
@@ -192,7 +180,7 @@ npm run typecheck    # Verifica tipos TypeScript
 
 ## 📚 Documentação
 
-- [DEPLOY-RENDER.md](./DEPLOY-RENDER.md) - Instruções de deploy no Render
+
 - [RECUPERACAO-SENHA.md](./RECUPERACAO-SENHA.md) - Sistema de recuperação de senha
 - [ATUALIZACAO-PLANOS.md](./ATUALIZACAO-PLANOS.md) - Atualização de planos
 - [GRAFICOS-STATUS-REPORT.md](./GRAFICOS-STATUS-REPORT.md) - Gráficos do Status Report
