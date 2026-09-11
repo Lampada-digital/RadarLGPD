@@ -88,15 +88,31 @@ npm run preview
 
 ### Vercel (Recomendado)
 
-1. Conecte seu repositório GitHub ao Vercel
-2. O Vercel detectará automaticamente as configurações
-3. Deploy automático a cada push
+1. Acesse [vercel.com](https://vercel.com)
+2. Clique em **Add New** → **Project**
+3. Importe o repositório GitHub
+5. O Vercel detectará automaticamente as configurações do `vercel.json`
+6. Clique em **Deploy**
+8. Deploy automático a cada push na branch `main`
 
 ### GitHub Pages
 
-1. Configure o GitHub Pages para usar a branch `gh-pages`
-2. Execute `npm run build`
-3. Faça deploy da pasta `dist`
+O projeto já está configurado com GitHub Actions. Siga os passos:
+
+1. Acesse seu repositório no GitHub
+2. Vá em **Settings → Pages**
+4. Em **Source**, selecione **GitHub Actions**
+5. O workflow `.github/workflows/deploy.yml` será executado automaticamente a cada push
+6. O site será publicado em: `https://seu-usuario.github.io/nome-do-repositorio`
+
+**Comandos manuais (se necessário):**
+
+```bash
+# Build para GitHub Pages
+npm run build -- --base=./
+
+# O build gerará a pasta dist/ que será deployada automaticamente
+```
 
 ## 📁 Estrutura do Projeto
 
@@ -114,6 +130,10 @@ radar-grpc/
 │   └── ...
 ├── public/              # Arquivos públicos
 ├── dist/                # Build de produção
+├── .github/
+│   └── workflows/
+│       └── deploy.yml   # Workflow para GitHub Pages
+├── vercel.json          # Configuração do Vercel
 ├── package.json         # Dependências
 └── vite.config.ts       # Configuração do Vite
 ```
