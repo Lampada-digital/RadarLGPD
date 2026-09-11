@@ -1,58 +1,236 @@
-# Radar GRC — LGPD · GDPR · ISO com IA
+# Radar GRC - Sistema de Governança, Risco e Compliance
 
-Plataforma de **privacidade e compliance** que coloca todo dado pessoal da empresa sob um
-mesmo radar: mapeamento LGPD e GDPR, programas de implementação das normas ISO e
-certificações (SOC 2, PCI-DSS), gestão de cookies e documentos prontos para auditoria —
-com classificação assistida por IA que roda 100% no navegador.
+Sistema completo de Governança, Risco e Compliance (GRC) com foco em LGPD e GDPR, desenvolvido com React, TypeScript e Tailwind CSS.
 
-## Acesso
+## 🚀 Funcionalidades
 
-| Conta | E-mail | Senha |
-|---|---|---|
-| Demonstração (Completo) | `demo@radarlgpd.app` | `demo1234` |
-| **Root / Administrador Master** | `root@radargrc.app` | `Root#Radar2026` |
+### 📊 Dashboard
+- Visão geral de todos os projetos e iniciativas
+- Métricas de progresso e status
+- Alertas e notificações
+- Gráficos interativos (Pizza, Barras, Gantt)
 
-> A conta **root** é administrador com plano Completo (acesso total, sem marcação de demo).
-> Na tela de login, digite as credenciais manualmente (não aparece nos atalhos).
+### 📋 Gestão de Projetos
+- Cadastro e gerenciamento de projetos
+- Controle de status (Planejado, Em Andamento, Concluído, Atrasado, Pausado)
+- Definição de marcos e próximos passos
+- Gestão de riscos por projeto
+- Exportação em PDF, Excel, CSV e JSON
 
-## Funcionalidades
+### 🔒 LGPD & GDPR
+- Mapeamento de dados pessoais
+- Registro de operações (Art. 37 LGPD / Art. 30 GDPR)
+- Matriz de risco 5x5
+- Gestão de titulares e solicitações
+- Bases legais (Art. 6 e 9 GDPR)
+- DPIA e transferências internacionais
 
-- 🗺️ **LGPD** — Registro de operações (art. 37) com classificação por IA, matriz de risco 5×5
-  que recalcula em tempo real, fila de titulares (prazo 15d) e bases legais (art. 7º/11).
-- 🇪🇺 **GDPR** — ROPA (art. 30), bases Art. 6/9/10, DPIA pelos critérios EDPB (WP248) e
-  transferências internacionais (Capítulo V).
-- 📋 **Frameworks & certificações** — ISO 27001, 27002, 27701, **22301 (BCM)**, 31000, 37301,
-  37001, SOC 2 Type II, PCI-DSS v4.0, Governança de IA (ISO 42001 / AI Act) e Cookies.
-  Cada um com controles, estados, **evidências (documentos/imagens)**, plano de implementação
-  com IA e **pacote de políticas em PDF** (CONTROLADO com 60%+ de conformidade).
-- 🍪 **Gestão de Cookies** — gerador de banner instalável no site do cliente, consentimentos
-  em tempo real, inventário classificado por IA e diagnóstico de conformidade.
-- 📄 **Relatórios** — exportação JSON/CSV, impressão/PDF e estado dos frameworks.
-- 🛡️ **Segurança** — senhas SHA-256+salt, bloqueio anti força-bruta, e-mail corporativo
-  obrigatório, trilha de auditoria, camada anticópia e script de hardening.
-- 👥 **Administração** — criar/bloquear/redefinir/excluir usuários, limites por plano.
-- 💳 **Planos** — Trial 7 dias (somente leitura), Standard, Business e Completo.
+### 📚 Frameworks ISO
+- ISO 27001 (Segurança da Informação)
+- ISO 27002 (Controles de Segurança)
+- ISO 27017 (Segurança em Nuvem)
+- ISO 27701 (Privacidade)
+- ISO 31000 (Gestão de Riscos)
+- ISO 37001 (Antissuborno)
+- ISO 37301 (Compliance)
 
-## Stack
+### 🤖 IA Integrada
+- Classificação automática de operações
+- Análise de risco com IA
+- Sugestões de controles
+- Geração de documentos automatizada
 
-- **React + Vite + TypeScript**, Tailwind CSS v4
-- Identidade própria: Bricolage Grotesque + Instrument Sans, paleta pinho/lima/papel
-- Sem dependências de PDF — motor próprio de geração de documentos
+### 📄 Documentos
+- Geração de políticas em PDF
+- Exportação de relatórios
+- Templates personalizáveis
+- Versionamento de documentos
 
-## Desenvolvimento
+### 🔐 Segurança
+- Autenticação com 2 fatores
+- Recuperação de senha segura
+- Controle de acesso por papel
+- Logs de auditoria
+- Proteção contra força bruta
+
+### 💼 Planos Comerciais
+- **Standard**: R$ 190/mês
+- **Business**: R$ 350/mês
+- **Completo**: R$ 459/mês
+
+## 🛠️ Tecnologias
+
+- **Frontend**: React 18 + TypeScript
+- **Estilização**: Tailwind CSS 4
+- **Build Tool**: Vite 6
+- **Gráficos**: Recharts
+- **Animações**: Framer Motion
+- **Ícones**: Lucide React
+- **Drag & Drop**: dnd-kit
+
+## 📦 Instalação
 
 ```bash
+# Instalar dependências
 npm install
-npm run dev      # ambiente local
-npm run build    # build de produção (dist/)
+
+# Desenvolvimento
+npm run dev
+
+# Build de produção
+npm run build
+
+# Preview do build
+npm run preview
 ```
 
-## Deploy (Vercel)
+## 🚀 Deploy
 
-1. Suba este repositório para o GitHub;
-2. Na Vercel: **Import Project** → selecione o repositório;
-3. A Vercel detecta o Vite automaticamente (configuração em `vercel.json`);
-4. Deploy pronto — o rewrite de SPA e os headers de segurança já estão configurados.
+### Vercel (Recomendado)
 
-> **Proteção do código:** mantenha o repositório **privado** e publique apenas o build (`dist`).
-> Nunca exponha publicamente a pasta `src`.
+1. Conecte seu repositório GitHub ao Vercel
+2. O Vercel detectará automaticamente as configurações
+3. Deploy automático a cada push
+
+### Render
+
+1. Conecte seu repositório GitHub ao Render
+2. Selecione **Static Site**
+3. Configure:
+   - Build Command: `npm run build`
+   - Publish Directory: `dist`
+4. Deploy automático a cada push
+
+Veja [DEPLOY-RENDER.md](./DEPLOY-RENDER.md) para mais detalhes.
+
+### GitHub Pages
+
+1. Configure o GitHub Pages para usar a branch `gh-pages`
+2. Execute `npm run build`
+3. Faça deploy da pasta `dist`
+
+## 📁 Estrutura do Projeto
+
+```
+radar-grpc/
+├── src/
+│   ├── components/       # Componentes React
+│   │   ├── charts/      # Componentes de gráficos
+│   │   ├── ui/          # Componentes de UI
+│   │   └── ...          # Outros componentes
+│   ├── lib/             # Bibliotecas e utilitários
+│   ├── auth.tsx         # Autenticação
+│   ├── store.tsx        # Estado global
+│   ├── domain.ts        # Domínio da aplicação
+│   └── ...
+├── public/              # Arquivos públicos
+├── dist/                # Build de produção
+├── render.yaml          # Configuração do Render
+├── package.json         # Dependências
+└── vite.config.ts       # Configuração do Vite
+```
+
+## 🔑 Credenciais de Demonstração
+
+- **Email**: demo@radarlgpd.app
+- **Senha**: demo1234
+
+## 📊 Planos
+
+### Standard - R$ 190/mês
+- LGPD ilimitado (art. 37)
+- GDPR ilimitado (art. 30)
+- Matriz de risco em tempo real
+- Fila de titulares (15d/30d)
+- Até 3 usuários
+
+### Business - R$ 350/mês
+- Tudo do Standard
+- ISO 27001-27002-27701 + SOC 2 + PCI-DSS
+- Assistente de IA ilimitado
+- Pacotes de políticas (PDF/MD)
+- Até 10 usuários
+
+### Completo - R$ 459/mês
+- Tudo do Business
+- Usuários ilimitados
+- Exportações e relatórios completos
+- Todos os frameworks ISO
+- Suporte prioritário
+
+## 🔒 Segurança
+
+- Autenticação com 2 fatores
+- Recuperação de senha com código de 6 dígitos
+- Hash de senha com SHA-256 + salt
+- Controle de acesso por papel (Admin, Operador)
+- Logs de auditoria completos
+- Proteção contra força bruta
+- Validação de e-mail corporativo
+
+## 📝 Scripts Disponíveis
+
+```bash
+# Desenvolvimento
+npm run dev          # Inicia servidor de desenvolvimento
+
+# Build
+npm run build        # Gera build de produção
+
+# Preview
+npm run preview      # Preview do build de produção
+
+# Type Check
+npm run typecheck    # Verifica tipos TypeScript
+```
+
+## 🌐 Links de Pagamento
+
+- **Standard**: https://mpago.la/15FRXbU
+- **Business**: https://mpago.la/1yUEzfz
+- **Completo**: https://mpago.la/1MDpTpD
+
+## 📚 Documentação
+
+- [DEPLOY-RENDER.md](./DEPLOY-RENDER.md) - Instruções de deploy no Render
+- [RECUPERACAO-SENHA.md](./RECUPERACAO-SENHA.md) - Sistema de recuperação de senha
+- [ATUALIZACAO-PLANOS.md](./ATUALIZACAO-PLANOS.md) - Atualização de planos
+- [GRAFICOS-STATUS-REPORT.md](./GRAFICOS-STATUS-REPORT.md) - Gráficos do Status Report
+
+## 🤝 Contribuindo
+
+1. Faça um fork do projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](./LICENSE) para mais detalhes.
+
+## 📞 Suporte
+
+Para suporte, envie um email para suporte@radargrc.com ou abra uma issue no GitHub.
+
+## 🎯 Próximos Passos
+
+- [ ] Implementar backend com Supabase
+- [ ] Adicionar autenticação real com 2FA
+- [ ] Implementar envio de emails para recuperação de senha
+- [ ] Adicionar mais frameworks ISO
+- [ ] Implementar geração de documentos avançada
+- [ ] Adicionar integração com APIs externas
+- [ ] Implementar testes automatizados
+- [ ] Adicionar PWA support
+
+## 📈 Roadmap
+
+- Q1 2024: Backend com Supabase
+- Q2 2024: Autenticação real e 2FA
+- Q3 2024: Mais frameworks ISO
+- Q4 2024: Integrações com APIs externas
+
+---
+
+Desenvolvido com ❤️ por Radar GRC
