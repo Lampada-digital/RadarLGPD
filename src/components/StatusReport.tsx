@@ -4,6 +4,9 @@ import { Cabecalho, Ic, Reveal } from "./ui";
 import { uid } from "../domain";
 import { baixarCsv, baixarExcel, baixarJson } from "../exportImport";
 import { DocPdf } from "../pdf";
+import { BarChart } from "./charts/BarChart";
+import { PieChart } from "./charts/PieChart";
+import { GanttChart } from "./charts/GanttChart";
 
 /* =====================================================================
    Status Report — Acompanhamento de projetos e iniciativas de GRC
@@ -98,9 +101,11 @@ export default function StatusReport() {
 
   const stats = {
     total: projetos.length,
+    planejado: projetos.filter((p) => p.status === "planejado").length,
     em_andamento: projetos.filter((p) => p.status === "em_andamento").length,
     concluidos: projetos.filter((p) => p.status === "concluido").length,
     atrasados: projetos.filter((p) => p.status === "atrasado").length,
+    pausado: projetos.filter((p) => p.status === "pausado").length,
   };
 
   const atualizarProjeto = (id: string, patch: Partial<Projeto>) => {
@@ -242,6 +247,55 @@ export default function StatusReport() {
             </button>
           ))}
         </div>
+      </Reveal>
+
+      {/* Gráficos */}
+      <Reveal delay={80}>
+        <div className="mb-6 grid gap-4 lg:grid-cols-2">
+          {/* Gráfico de Pizza - Distribuição por Status */}
+          <div className="rounded-lg border border-sand bg-cream p-5">
+            <PieChart
+              title="Distribuição por Status"
+              data={[
+                { label: "Planejado", value: stats.planejado, color: "#78867c" },
+                { label: "Em Andamento", value: stats.em_andamento, color: "#d99a26" },
+                { label: "Concluído", value: stats.concluidos, color: "#2e6b54" },
+                { label: "Atrasado", value: stats.atrasados, color: "#bd4f26" },
+              ]}
+              size={250}
+            />
+          </div>
+
+          {/* Gráfico de Barras - Progresso dos Projetos */}
+          <div className="rounded-lg border border-sand bg-cream p-5">
+            <BarChart
+              title="Progresso dos Projetos (%)"
+              data={filtrados.map((p) => ({
+                label: p.nome.length > 15 ? p.nome.substring(0, 15) + "..." : p.nome,
+                value: p.progresso,
+                maxValue: 100,
+                color: p.status === "concluido" ? "#2e6b54" : p.status === "em_andamento" ? "#d99a26" : p.status === "atrasado" ? "#bd4f26" : "#78867c",
+              }))}
+              height={250}
+            />
+          </div>
+        </div>
+
+        {/* Gráfico de Gantt - Cronograma */}
+        {filtrados.length > 0 && (
+          <div className="mb-6 rounded-lg border border-sand bg-cream p-5">
+            <GanttChart
+              title="Cronograma dos Projetos"
+              data={filtrados.map((p) => ({
+                label: p.nome,
+                start: p.dataInicio,
+                end: p.dataFim,
+                status: p.status,
+              }))}
+              height={Math.max(200, filtrados.length * 40 + 50)}
+            />
+          </div>
+        )}
       </Reveal>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
