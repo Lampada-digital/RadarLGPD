@@ -28,6 +28,7 @@ import PrivacyByDesign from "./components/PrivacyByDesign";
 import AuditoriaTI from "./components/AuditoriaTI";
 import Comite from "./components/Comite";
 import StatusReport from "./components/StatusReport";
+import WhiteLabelAdmin from "./components/WhiteLabelAdmin";
 
 type Page =
   | "dashboard" | "assistente"
@@ -35,7 +36,7 @@ type Page =
   | "gdpr-ropa" | "gdpr-avancado"
   | "iso" | "ai-gov" | "cookies"
   | "gap-analysis" | "siem" | "pentest-lab" | "privacy-by-design" | "auditoria-ti" | "comite" | "status-report"
-  | "relatorios" | "seguranca" | "planos" | "admin";
+  | "relatorios" | "seguranca" | "planos" | "admin" | "white-label";
 
 const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; icone: string; badge?: "ia" }[] }[] = [
   { secao: "Operação", itens: [
@@ -75,6 +76,7 @@ const NAV: { secao: string; admin?: boolean; itens: { id: Page; label: string; i
   ]},
   { secao: "Administração", admin: true, itens: [
     { id: "admin", label: "Painel admin", icone: "shield" },
+    { id: "white-label", label: "White Label", icone: "palette" },
   ]},
 ];
 
@@ -101,6 +103,7 @@ const TITULOS: Record<Page, string> = {
   seguranca: "Central de segurança",
   planos: "Assinatura & plano",
   admin: "Painel administrativo",
+  "white-label": "White Label - Personalização de Marca",
 };
 
 function Splash() {
@@ -307,6 +310,7 @@ function Shell() {
             {pagina === "seguranca" && <Security />}
             {pagina === "planos" && <Plans />}
             {pagina === "admin" && ehAdmin && <AdminPanel />}
+            {pagina === "white-label" && ehAdmin && <WhiteLabelAdmin />}
           </div>
         </main>
       </div>

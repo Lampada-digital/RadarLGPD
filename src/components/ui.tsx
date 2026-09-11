@@ -39,6 +39,7 @@ const PATHS: Record<string, ReactNode> = {
   star: <path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8L12 3.5Z" />,
   eye: (<><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="3" /></>),
   eyeOff: (<><path d="M4 4l16 16" /><path d="M9.9 5.9A9.4 9.4 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17.6 17.6 0 0 1-3.3 4M6.1 8.3A17 17 0 0 0 2.5 12S6 18.5 12 18.5c1.1 0 2.1-.2 3-.6" /></>),
+  palette: (<><path d="M12 2a10 10 0 0 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.4-.3-.4-.5-.9-.5-1.4 0-1.1.9-2 2-2h2.5c2.5 0 4.5-2 4.5-4.5C22 6.2 17.5 2 12 2z" /><circle cx="7.5" cy="10.5" r="1.5" fill="currentColor" /><circle cx="10.5" cy="7.5" r="1.5" fill="currentColor" /><circle cx="14.5" cy="7.5" r="1.5" fill="currentColor" /><circle cx="17.5" cy="10.5" r="1.5" fill="currentColor" /></>),
 };
 
 export function Ic({ name, size = 18, className = "", sw = 1.8 }: { name: string; size?: number; className?: string; sw?: number }) {
